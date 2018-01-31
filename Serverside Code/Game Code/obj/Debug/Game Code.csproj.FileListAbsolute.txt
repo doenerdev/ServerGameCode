@@ -1,0 +1,8 @@
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\bin\Debug\Player.IO GameLibrary.dll
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\bin\Debug\Player.IO GameLibrary.xml
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\obj\Debug\Game Code.csprojResolveAssemblyReference.cache
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\obj\Debug\Game Code.csproj.CoreCompileInputs.cache
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\bin\Debug\ServerGameCode.dll
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\bin\Debug\ServerGameCode.pdb
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\obj\Debug\ServerGameCode.dll
+C:\Users\Nico\Documents\Thesis\SDKs\PlayerIO SDK.lFTKIPXMz8-CjjSuAPWVwg\Unity3D\Example - Multiplayer - Mushrooms\Serverside Code\Game Code\obj\Debug\ServerGameCode.pdb
