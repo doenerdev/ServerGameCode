@@ -19,8 +19,6 @@ namespace DevelopmentTestServer {
 
             // Start the server and wait for incomming connection
             PlayerIO.DevelopmentServer.Server.StartWithDebugging();
-
-		    
         }
 	}
 }

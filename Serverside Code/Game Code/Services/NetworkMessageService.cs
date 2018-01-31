@@ -36,24 +36,40 @@ namespace ServerGameCode.Services
                     case NetworkMessageType.RequestHexMap:
                         HexMapDTO map = new HexMapDTO(HexMapSize.M)
                         {
-                            Width = 10,
-                            Height = 10,
                             Cells = new List<HexCellDTO>()
                             {
                                 new HexCellDTO()
                                 {
-                                    HexCellType = HexCellType.Forest,
+                                    HexCellType = HexCellType.Mountains,
                                     Resource = new TowerResourceDTO(ResourceType.Glass)
                                 },
                                 new HexCellDTO()
                                 {
-                                    HexCellType = HexCellType.Forest,
+                                    HexCellType = HexCellType.Desert,
                                 },
                             }
                         };
-
+                        Console.WriteLine("-------------");
+                        Console.WriteLine(map.Width);
+                        Console.WriteLine(map.Height);
                         Message m = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
                         m = map.ToMessage(m);
+
+                        foreach (var cell in map.Cells)
+                        {
+                            Console.WriteLine(cell.HexCellType);
+                        }
+
+                        uint offset = 0;
+                        HexMapDTO dto = HexMapDTO.FromMessageArguments(m, ref offset);
+                        Console.WriteLine(dto.Width);
+                        Console.WriteLine(dto.Height);
+
+                        foreach (var cell in dto.Cells)
+                        {
+                            Console.WriteLine(cell.HexCellType);
+                        }
+
                         _game.Broadcast(m);
                         break;
                 }
