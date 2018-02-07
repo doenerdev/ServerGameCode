@@ -6,16 +6,20 @@ using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
 using ServerClientShare.Enums;
+using ServerGameCode.ExtensionMethods;
+using ServerGameCode.Interfaces;
 
 namespace ServerGameCode.Services
 {
-    public class NetworkMessageService
+    public class NetworkMessageService : IServerAspect
     {
-        private GameCode _game;
+        private ServerCode _server;
 
-        public NetworkMessageService(GameCode game)
+        public ServerCode Server { get { return _server; }}
+
+        public NetworkMessageService(ServerCode server)
         {
-            _game = game;
+            _server = server;
         }
 
         public void GotMessage(Player player, Message message)
@@ -25,6 +29,7 @@ namespace ServerGameCode.Services
 
             if (parseSuccessful)
             {
+                Message answer;
                 switch (messageType)
                 {
                     /*case "Command":
@@ -33,44 +38,25 @@ namespace ServerGameCode.Services
                     case "PlayerLeft":
                         player.Disconnect();
                         break;*/
+                    case NetworkMessageType.RequestDeck:
+                        var deck = this.DeckService().Deck;
+                        answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
+                        answer = deck.ToMessage(answer);
+
+                        _server.Broadcast(answer);
+                        break;
+                    case NetworkMessageType.RequestMarketplace:
+                        var marketplace = this.DeckService().Marketplace;
+                        answer = Message.Create(NetworkMessageType.ServerSentMarketplace.ToString("G"));
+                        answer = marketplace.ToMessage(answer);
+                        _server.Broadcast(answer);
+                        break;
                     case NetworkMessageType.RequestHexMap:
-                        HexMapDTO map = new HexMapDTO(HexMapSize.M)
-                        {
-                            Cells = new List<HexCellDTO>()
-                            {
-                                new HexCellDTO()
-                                {
-                                    HexCellType = HexCellType.Mountains,
-                                    Resource = new TowerResourceDTO(ResourceType.Glass)
-                                },
-                                new HexCellDTO()
-                                {
-                                    HexCellType = HexCellType.Desert,
-                                },
-                            }
-                        };
-                        Console.WriteLine("-------------");
-                        Console.WriteLine(map.Width);
-                        Console.WriteLine(map.Height);
-                        Message m = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
-                        m = map.ToMessage(m);
+                        var map = this.HexMapService().CurrentHexMapDto;
+                        answer = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
+                        answer = map.ToMessage(answer);
 
-                        foreach (var cell in map.Cells)
-                        {
-                            Console.WriteLine(cell.HexCellType);
-                        }
-
-                        uint offset = 0;
-                        HexMapDTO dto = HexMapDTO.FromMessageArguments(m, ref offset);
-                        Console.WriteLine(dto.Width);
-                        Console.WriteLine(dto.Height);
-
-                        foreach (var cell in dto.Cells)
-                        {
-                            Console.WriteLine(cell.HexCellType);
-                        }
-
-                        _game.Broadcast(m);
+                        _server.Broadcast(answer);
                         break;
                 }
             }
@@ -85,60 +71,54 @@ namespace ServerGameCode.Services
                 message.Add(content);
             }
 
-            _game.Broadcast(message);
+            _server.Broadcast(message);
         }
 
         public void BroadcastGameStartedMessage()
         {
-            Message gameplayStartedMessage = Message.Create("GameplayStarted");
-            gameplayStartedMessage.Add(_game.GameRoomService.CurrentPlayer.PlayerName);
-
-            _game.Broadcast(gameplayStartedMessage);
+            Message message = Message.Create(NetworkMessageType.ServerSentReady.ToString("G"));
+            message = this.GameRoomService().MatchDTO.ToMessage(message);
+            _server.Broadcast(message);
         }
 
         public void BroadcastPlayerListMessage()
         {
-            /*Message playerListMessage = Message.Create("PlayerList");
-            foreach (var playerId in _game.GameRoomService.PlayerIds)
-            {
-                playerListMessage.Add(playerId);
-                playerListMessage.Add(_game.IsPlayerOnline(playerId));
-            }
-
-            _game.Broadcast(playerListMessage);*/
+            Message message = Message.Create(NetworkMessageType.ServerSentReady.ToString("G"));
+            message = this.GameRoomService().MatchDTO.ToMessage(message);
+            _server.Broadcast(message);
         }
 
         public void BroadcastNexActivePlayerMessage(string activePlayerId)
         {
             Message message = Message.Create("NewTurn", activePlayerId);
-            _game.Broadcast(message);
+            _server.Broadcast(message);
         }
 
         public void BroadcastPlayerWentOfflineMessage(string playerId)
         {
-            _game.Broadcast("PlayerOffline", playerId);
+            _server.Broadcast("PlayerOffline", playerId);
         }
 
         public void BroadcastPlayerCameOnlineMessage(string playerId)
         {
-            _game.Broadcast("PlayerOnline", playerId);
+            _server.Broadcast("PlayerOnline", playerId);
         }
 
         private void BroadcastCommandMessage(Player player, Message message)
         {
             CommandId commandId = (CommandId)Enum.Parse(typeof(CommandId), message.GetString(0));
             PlayerCommand command = PlayerCommand.CreateFromMessageOptions(player, commandId, message.GetString(1));
-            _game.GameRoomService.PlayerCommands.AddPlayerCommand(command);
-            _game.GameRoomService.WriteCommandLogToDb(_game.PlayerIO.BigDB);
+            this.GameRoomService().PlayerCommands.AddPlayerCommand(command);
+            this.GameRoomService().WriteCommandLogToDb(_server.PlayerIO.BigDB);
 
             switch (commandId)
             {
                 case CommandId.EndTurn:
-                    _game.TurnManager.SetNextActivePlayer();
+                    _server.TurnManager.SetNextActivePlayer();
                     break;
                 default:
                     Message commandMessage = Message.Create(message.Type, message.GetString(0));
-                    foreach (var connectedPlayer in _game.Players)
+                    foreach (var connectedPlayer in _server.Players)
                     {
                         if (connectedPlayer.ConnectUserId != player.ConnectUserId)
                         {
@@ -151,17 +131,17 @@ namespace ServerGameCode.Services
             {
                 /*CommandId commandId = (CommandId) Enum.Parse(typeof(CommandId), message.GetString(0));
                 PlayerCommand command = PlayerCommand.CreateFromString(player, commandId, message.GetString(1));
-                _game.GameRoomService.PlayerCommands.AddPlayerCommand(command);
-                _game.GameRoomService.WriteCommandLogToDb(_game.PlayerIO.BigDB);
+                _server.GameRoomService.PlayerCommands.AddPlayerCommand(command);
+                _server.GameRoomService.WriteCommandLogToDb(_server.PlayerIO.BigDB);
 
                 switch (commandId)
                 {
                     case CommandId.EndTurn:
-                        _game.TurnManager.SetNextActivePlayer();
+                        _server.TurnManager.SetNextActivePlayer();
                         break;
                     default:
                         Message commandMessage = Message.Create(message.Type, message.GetString(0));
-                        foreach (var connectedPlayer in _game.Players)
+                        foreach (var connectedPlayer in _server.Players)
                         {
                             if (connectedPlayer.ConnectUserId != player.ConnectUserId)
                             {

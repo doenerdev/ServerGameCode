@@ -10,7 +10,7 @@ C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bi
 C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bin\Debug\Player.IO GameLibrary.xml
 C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\Game Code.csprojResolveAssemblyReference.cache
 C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\Game Code.csproj.CoreCompileInputs.cache
-C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bin\Debug\MushroomsUnity3DExample.dll
-C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bin\Debug\MushroomsUnity3DExample.pdb
-C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\MushroomsUnity3DExample.dll
-C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\MushroomsUnity3DExample.pdb
+C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bin\Debug\ServerGameCode.dll
+C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\bin\Debug\ServerGameCode.pdb
+C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\ServerGameCode.dll
+C:\Users\Nico\Documents\Thesis\Unity\ServerGameCode\Serverside Code\Game Code\obj\Debug\ServerGameCode.pdb

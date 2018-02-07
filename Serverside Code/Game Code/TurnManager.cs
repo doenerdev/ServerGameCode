@@ -9,29 +9,29 @@ namespace ServerGameCode
 {
     public class TurnManager
     {
-        private GameCode _gameInstance;
+        private ServerCode _serverInstance;
 
-        public TurnManager(GameCode gameInstance)
+        public TurnManager(ServerCode serverInstance)
         {
-            _gameInstance = gameInstance;
+            _serverInstance = serverInstance;
         }
 
         public void Initialize()
         {
-            /*string activePlayerId = _gameInstance.GameRoomService.PlayerIds[_gameInstance.GameRoomService.PlayerIds.Count - 1];
-            _gameInstance.GameRoomService.SetActivePlayerId(activePlayerId);
-            _gameInstance.GameRoomService.WriteActivePlayerToDb(_gameInstance.PlayerIO.BigDB);*/
+            /*string activePlayerId = _serverInstance.GameRoomService.PlayerIds[_serverInstance.GameRoomService.PlayerIds.Count - 1];
+            _serverInstance.GameRoomService.SetActivePlayerId(activePlayerId);
+            _serverInstance.GameRoomService.WriteActivePlayerToDb(_serverInstance.PlayerIO.BigDB);*/
         }
 
         public void SetNextActivePlayer()
         {
-            /*ReadOnlyCollection<string> playerIds = _gameInstance.GameRoomService.PlayerIds;
-            int currentIndex = playerIds.IndexOf(_gameInstance.GameRoomService.CurrentPlayerName);
+            /*ReadOnlyCollection<string> playerIds = _serverInstance.GameRoomService.PlayerIds;
+            int currentIndex = playerIds.IndexOf(_serverInstance.GameRoomService.CurrentPlayerName);
             string activePlayerId = currentIndex >= playerIds.Count - 1 ? playerIds[0] : playerIds[currentIndex + 1];
-            _gameInstance.GameRoomService.SetActivePlayerId(activePlayerId);
-            _gameInstance.GameRoomService.WriteActivePlayerToDb(_gameInstance.PlayerIO.BigDB);
+            _serverInstance.GameRoomService.SetActivePlayerId(activePlayerId);
+            _serverInstance.GameRoomService.WriteActivePlayerToDb(_serverInstance.PlayerIO.BigDB);
 
-            _gameInstance.NetworkMessageService.BroadcastNexActivePlayerMessage(activePlayerId);*/
+            _serverInstance.NetworkMessageService.BroadcastNexActivePlayerMessage(activePlayerId);*/
         }
     }
 }

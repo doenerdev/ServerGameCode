@@ -11,13 +11,28 @@ namespace ServerGameCode.Services
     public class HexMapService
     {
         private HexCellService _hexCellService;
+        private HexMapDTO _currentHexMapDto;
+        private HexMapSize _mapSize;
 
-        public HexMapService(HexCellService hexCellService)
+        public HexMapDTO CurrentHexMapDto
         {
-            _hexCellService = hexCellService;
+            get
+            {
+                if (_currentHexMapDto == null)
+                {
+                    _currentHexMapDto = GenerateNewHexMap(HexMapSize.L);
+                }
+                return _currentHexMapDto;
+            }
         }
 
-        public HexMapDTO GenerateNewHexMap(HexMapSize size)
+        public HexMapService(HexCellService hexCellService, HexMapSize mapSize)
+        {
+            _hexCellService = hexCellService;
+            _mapSize = mapSize;
+        }
+
+        private HexMapDTO GenerateNewHexMap(HexMapSize size)
         {
             var dto = new HexMapDTO(size);
             var cells = new List<HexCellDTO>();

@@ -10,41 +10,35 @@ using ServerClientShare.DTO;
 using ServerClientShare.Enums;
 using ServerClientShare.Helper;
 using ServerGameCode.Helper;
+using ServerGameCode.Interfaces;
 using ServerGameCode.Services;
 using Console = System.Console;
 
 namespace ServerGameCode {
 	[RoomType("Casual")]
-	public class GameCode : Game<Player>
+	public class ServerCode : Game<Player>
 	{
-	    private RandomGenerator _rndGenerator;
-	    private Die _die;
-        private HexCellService _hexCellService;
-	    private HexMapService _hexMapService;
-	    private NetworkMessageService _networkMessageService;
-	    private GameRoomService _gameRoomService;
+	    private ServiceContainer _serviceContainer;
+	   
 	    private TurnManager _turnManager;
 	    private bool _gameplayStarted = false;
 
-	    public GameRoomService GameRoomService
+	    public ServiceContainer ServiceContainer
 	    {
-	        get { return _gameRoomService; }
+	        get { return _serviceContainer; }
 	    }
+	    
 	    public TurnManager TurnManager
 	    {
 	        get { return _turnManager; }
 	    }
-	    public NetworkMessageService NetworkMessageService
-	    {
-	        get { return _networkMessageService; }
-	    }
 
-		// This method is called when an instance of your the game is created
+		// This method is called when an instance of your the server is created
 		public override void GameStarted()
 		{
-            Console.WriteLine("Game has started: " + RoomId);
+            Console.WriteLine("Server has started: " + RoomId);
 
-            //if this is a continued game, skip waiting for opponents and start right away
+            //if this is a continued server, skip waiting for opponents and start right away
             if (IsNewGame() == false)
 		    {
                 InitializeContinuedGame();
@@ -57,22 +51,17 @@ namespace ServerGameCode {
 
 	    private void InitializeNewGame()
 	    {
-	        Console.WriteLine("Initializing new game");
-            _rndGenerator = new RandomGenerator();
-            _die = new Die(_rndGenerator);
-	        _hexCellService = new HexCellService(_die, _rndGenerator);
-            _hexMapService = new HexMapService(_hexCellService);
-	        _networkMessageService = new NetworkMessageService(this);
-	        _gameRoomService = new GameRoomService(this, this.RoomId, RoomData);
+	        Console.WriteLine("Initializing new server");
+            _serviceContainer = new ServiceContainer(this, this.RoomId, RoomData);
             _turnManager = new TurnManager(this);
         }
 
         private void InitializeContinuedGame()
 	    {
-	        Console.WriteLine("Initializeing continued game");
+	        Console.WriteLine("Initializeing continued server");
 	        Visible = false;
-	        _networkMessageService = new NetworkMessageService(this);
-	        _turnManager = new TurnManager(this);
+	        _serviceContainer = new ServiceContainer(this, this.RoomId, RoomData);
+            _turnManager = new TurnManager(this);
 
             try
 	        {
@@ -81,32 +70,32 @@ namespace ServerGameCode {
 	                RoomData["GameSessionId"],
 	                successCallback: gameRoomInfoDb =>
 	                {
-	                    _gameRoomService = GameRoomService.CreateFromDbObject(this, gameRoomInfoDb);
+	                    //_gameRoomService = GameRoomService.CreateFromDbObject(this, gameRoomInfoDb);
 	                    StartGameplay();
 	                },
 	                errorCallback: error =>
 	                {
-	                    Console.WriteLine("An error occured while trying to fetch the game sessions info from the DB");
+	                    Console.WriteLine("An error occured while trying to fetch the server sessions info from the DB");
 	                }
 	            );
 	        }
 	        catch
 	        {
-	            Console.WriteLine("An error occured while trying to fetch the game sessions info from the DB");
+	            Console.WriteLine("An error occured while trying to fetch the server sessions info from the DB");
 	        }
         }
 
 	    private void SetGameRoomInfoPlayers()
 	    {
 	        foreach (var player in Players) {
-	            _gameRoomService.AddPlayer(player);
+	            ServiceContainer.GameRoomService.AddPlayer(player);
 	        }
 	    }
 
 	    public void SendMessageToInactivePlayers(Message message)
 	    {
 	        foreach (var player in Players) {
-	            if (player.ConnectUserId != _gameRoomService.CurrentPlayer.PlayerName)
+	            if (player.ConnectUserId != ServiceContainer.GameRoomService.CurrentPlayer.PlayerName)
 	            {
 	                player.Send(message);
 	            }
@@ -115,7 +104,7 @@ namespace ServerGameCode {
 
 	    private bool IsNewGame()
 	    {
-            //check whether this is a new game or if this a a continued game session
+            //check whether this is a new server or if this a a continued server session
 	        return (RoomData != null && (RoomData.ContainsKey("NewGame") == false || RoomData["NewGame"] != "true")) == false;
 	    }
 
@@ -123,14 +112,11 @@ namespace ServerGameCode {
 	    {
             Console.WriteLine("Gameplay started");
             SetGameRoomInfoPlayers();
-	        _gameRoomService.GameStartedState = GameStartedState.Started;
-	        _gameRoomService.WriteToDb(PlayerIO.BigDB);
+	        ServiceContainer.GameRoomService.GameStartedState = GameStartedState.Started;
+	        ServiceContainer.GameRoomService.WriteToDb(PlayerIO.BigDB);
 	        _turnManager.Initialize();
-            _networkMessageService.BroadcastPlayerListMessage();
-            _networkMessageService.BroadcastGameStartedMessage();
-
-	  
-
+	        ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
+	        ServiceContainer.NetworkMessageService.BroadcastGameStartedMessage();
 
             _gameplayStarted = true;
         }
@@ -138,7 +124,7 @@ namespace ServerGameCode {
 	    public override bool AllowUserJoin(Player player)
 	    {
             //only allow players to join if the room size permits it
-            return PlayerCount < _gameRoomService.RequiredRoomSize;
+            return PlayerCount < ServiceContainer.GameRoomService.RequiredRoomSize;
 	    }
 
 	    // This method is called when the last player leaves the room, and it's closed down.
@@ -146,7 +132,7 @@ namespace ServerGameCode {
 			Console.WriteLine("RoomId: " + RoomId);
 		}
 
-		// This method is called whenever a player joins the game
+		// This method is called whenever a player joins the server
 		public override void UserJoined(Player player)
 		{
             //TODO bedingungen unterscheiden sich für neues und für fortgesetztes spiel
@@ -158,30 +144,10 @@ namespace ServerGameCode {
 				}
 			}
 
-		    if (PlayerCount == _gameRoomService.RequiredRoomSize)
+		    if (PlayerCount == ServiceContainer.GameRoomService.RequiredRoomSize)
 		    {
 		        Console.WriteLine("Room " + RoomId + " reached its required room size.");
 		        Visible = false; //Make this room invisble once the required room size is reached to prevent this room from showing up in public room lists
-
-                var hexMapDto = _hexMapService.GenerateNewHexMap(HexMapSize.M);
-		        HexMapDTO map = new HexMapDTO(HexMapSize.M)
-		        {
-		            Width = 10,
-		            Height = 10,
-		            Cells = new List<HexCellDTO>()
-		            {
-		                new HexCellDTO()
-		                {
-		                    HexCellType = HexCellType.Forest,
-		                    Resource = new TowerResourceDTO(ResourceType.Glass)
-		                },
-		                new HexCellDTO()
-		                {
-		                    HexCellType = HexCellType.Forest,
-		                },
-		            }
-		        };
-                //_networkMessageService.BroadcastMessage(NetworkMessageType.ServerGameInitialized, map.ToMessageArguments()); //TODO just for testing
 
                 if (_gameplayStarted == false)
 		        {
@@ -190,10 +156,10 @@ namespace ServerGameCode {
 		    }
 		}
 
-		// This method is called when a player leaves the game
+		// This method is called when a player leaves the server
 		public override void UserLeft(Player player) {
             Console.WriteLine("Player: " + player.ConnectUserId + " left");
-			_networkMessageService.BroadcastPlayerWentOfflineMessage(player.ConnectUserId);
+		    ServiceContainer.NetworkMessageService.BroadcastPlayerWentOfflineMessage(player.ConnectUserId);
 		}
 
 	    public bool IsPlayerOnline(string playerId)
@@ -203,14 +169,14 @@ namespace ServerGameCode {
 
 	    public bool IsAsynchronous()
 	    {
-	        return _gameRoomService?.RequiredRoomSize == PlayerCount;
+	        return ServiceContainer.GameRoomService?.RequiredRoomSize == PlayerCount;
 	    }
 
 		// This method is called when a player sends a message into the server code
 		public override void GotMessage(Player player, Message message)
 		{
 		    Console.WriteLine(message.Type);
-		    _networkMessageService.GotMessage(player, message);
+		    ServiceContainer.NetworkMessageService.GotMessage(player, message);
 		}
 	}
 
@@ -219,13 +185,6 @@ namespace ServerGameCode {
         Pending,
         Started,
         Ended
-    }
-
-    public enum RockPaperScissorSymbol
-    {
-        Rock,
-        Paper,
-        Scissor,
     }
 
     public interface IMessageSerializable

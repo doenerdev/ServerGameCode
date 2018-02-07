@@ -29,6 +29,10 @@ namespace ServerGameCode
 
         public GameStartedState GameStartedState { get; set; }
 
+        public MatchDTO MatchDTO
+        {
+            get { return _matchDto; }
+        }
         public PlayerDTO CurrentPlayer
         {
             get => _matchDto?.CurrentPlayerDto;
@@ -50,8 +54,6 @@ namespace ServerGameCode
 
             _rndGenerator = new RandomGenerator();
             _die = new Die(_rndGenerator);
-
-            Console.WriteLine("TEEEEEEEEEST");
         }
 
         private void InitializeFromRoomData(RoomData roomData)
@@ -95,7 +97,7 @@ namespace ServerGameCode
             try
             {
                 /*string gameId = dbObject.GetString("GameId");
-                GameRoomService gameRoomfService = new GameRoomService(game, gameId);
+                GameRoomService gameRoomfService = new GameRoomService(server, gameId);
                 gameRoomfService.GameStartedState = (GameStartedState)Enum.Parse(typeof(GameStartedState), dbObject.GetString("GameStartedState"));
                 gameRoomfService.CurrentPlayer = dbObject.GetString("CurrentPlayerName");
                 gameRoomfService._requiredRoomSize = Int32.Parse(dbObject.GetString("RequiredRoomSize"));
@@ -154,11 +156,11 @@ namespace ServerGameCode
                 successCallback: receivedDbObject =>
                 {
                     _databaseEntry = receivedDbObject;
-                    Console.WriteLine("Sucessfully wrote Game Room Info to DB");
+                    Console.WriteLine("Sucessfully wrote Server Room Info to DB");
                 },
                 errorCallback: error =>
                 {
-                    Console.WriteLine("An error occured while trying to write Game Room Info to DB");
+                    Console.WriteLine("An error occured while trying to write Server Room Info to DB");
                 }
             );
         }
@@ -173,7 +175,7 @@ namespace ServerGameCode
                     _databaseEntry = receivedDbObject;
                     _databaseEntry.Set("CurrentPlayerName", CurrentPlayer.PlayerName);
                     _databaseEntry.Save();
-                    Console.WriteLine("Sucessfully wrote Game Room Info to DB");
+                    Console.WriteLine("Sucessfully wrote Server Room Info to DB");
                 },
                 errorCallback: error =>
                 {
@@ -203,7 +205,7 @@ namespace ServerGameCode
                     }
                     _databaseEntry.Set("CommandLog", commandLogDb);
                     _databaseEntry.Save();
-                    Console.WriteLine("Sucessfully wrote Game Room Info to DB");
+                    Console.WriteLine("Sucessfully wrote Server Room Info to DB");
                 },
                 errorCallback: error =>
                 {
