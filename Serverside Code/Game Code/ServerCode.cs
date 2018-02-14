@@ -116,7 +116,8 @@ namespace ServerGameCode {
 	        ServiceContainer.GameRoomService.WriteToDb(PlayerIO.BigDB);
 	        _turnManager.Initialize();
 	        ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
-	        ServiceContainer.NetworkMessageService.BroadcastGameStartedMessage();
+	        ServiceContainer.NetworkMessageService.BroadcastRoomCreatedMessage();
+	        //ServiceContainer.NetworkMessageService.BroadcastGameStartedMessage();
 
             _gameplayStarted = true;
         }

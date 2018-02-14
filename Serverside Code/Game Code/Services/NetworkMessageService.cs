@@ -27,6 +27,8 @@ namespace ServerGameCode.Services
             NetworkMessageType messageType;
             var parseSuccessful = Enum.TryParse(message.Type, out messageType);
 
+            Console.WriteLine("Received Message!");
+            Console.WriteLine("Message type:" + messageType);
             if (parseSuccessful)
             {
                 Message answer;
@@ -58,6 +60,9 @@ namespace ServerGameCode.Services
 
                         _server.Broadcast(answer);
                         break;
+                    case NetworkMessageType.GameActionPerformed:
+
+                        break;
                 }
             }
         }
@@ -74,8 +79,16 @@ namespace ServerGameCode.Services
             _server.Broadcast(message);
         }
 
+        public void BroadcastRoomCreatedMessage()
+        {
+            Message message = Message.Create("RoomCreated");
+            message = this.GameRoomService().MatchDTO.ToMessage(message);
+            _server.Broadcast(message);
+        }
+
         public void BroadcastGameStartedMessage()
         {
+            Console.WriteLine("Broadcast Game started");
             Message message = Message.Create(NetworkMessageType.ServerSentReady.ToString("G"));
             message = this.GameRoomService().MatchDTO.ToMessage(message);
             _server.Broadcast(message);
