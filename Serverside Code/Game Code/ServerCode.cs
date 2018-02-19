@@ -179,6 +179,11 @@ namespace ServerGameCode {
 		    Console.WriteLine(message.Type);
 		    ServiceContainer.NetworkMessageService.GotMessage(player, message);
 		}
+
+	    public Player GetPlayerByName(string playerName)
+	    {
+	        return Players?.SingleOrDefault(p => p.ConnectUserId == playerName);
+	    }
 	}
 
     public enum GameStartedState

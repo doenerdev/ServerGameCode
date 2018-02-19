@@ -6,6 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerGameCode.Helper;
+using ServerClientShare.Services;
+using ServerClientShare.Helper;
 using ServerGameCode.Interfaces;
 
 namespace ServerGameCode.Services
@@ -14,20 +16,20 @@ namespace ServerGameCode.Services
     {
 
         private ServerCode _server;
-        private RandomGenerator _rndGenerator;
-        private Die _die;
+        private ServerClientShare.Helper.RandomGenerator _rndGenerator;
+        private ServerClientShare.Helper.Die _die;
         private HexCellService _hexCellService;
         private HexMapService _hexMapService;
         private DeckService _deckService;
         private NetworkMessageService _networkMessageService;
         private GameRoomService _gameRoomService;
 
-        public RandomGenerator RandomGenerator
+        public ServerClientShare.Helper.RandomGenerator RandomGenerator
         {
             get { return _rndGenerator;
             } 
         }
-        public Die Die
+        public ServerClientShare.Helper.Die Die
         {
             get { return _die; }
         }
@@ -57,8 +59,8 @@ namespace ServerGameCode.Services
         public ServiceContainer(ServerCode server, string roomId, RoomData roomData)
         {
             _server = server;
-            _rndGenerator = new RandomGenerator();
-            _die = new Die(_rndGenerator);
+            _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
+            _die = new ServerClientShare.Helper.Die(_rndGenerator);
             _hexCellService = new HexCellService(_die, _rndGenerator);
             _hexMapService = new HexMapService(_hexCellService, HexMapSize.M);
             _deckService = new DeckService(_rndGenerator);

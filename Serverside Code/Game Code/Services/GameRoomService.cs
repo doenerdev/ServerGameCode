@@ -6,12 +6,15 @@ using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
+using ServerClientShare.Helper;
 using ServerGameCode.Helper;
 
 namespace ServerGameCode
 {
     public class GameRoomService : DatabaseInteraction<GameRoomService>
     {
+        public const int TesingRoomSize = 1; //TODO REMOVE LATER
+
         private RandomGenerator _rndGenerator;
         private Die _die;
         private Game<Player> _game;
@@ -20,24 +23,22 @@ namespace ServerGameCode
         private string _currentPlayerIndex;
 
         private PlayerCommandLog _commands;
-        private int _requiredRoomSize = 1; //TODO change back to 2
+        private int _requiredRoomSize = TesingRoomSize; //TODO change back to 2
         private DatabaseObject _databaseEntry;
 
         public const int MaxRoomSize = 4;
-        public const int MinRoomSize = 1; //TODO change back to 2
-        public const int DefaultRoomSize = 1; //TODO change back to 2
+        public const int MinRoomSize = TesingRoomSize; //TODO change back to 2
+        public const int DefaultRoomSize = TesingRoomSize; //TODO change back to 2
 
         public GameStartedState GameStartedState { get; set; }
 
-        public MatchDTO MatchDTO
-        {
-            get { return _matchDto; }
-        }
+        public MatchDTO MatchDTO => _matchDto;
         public PlayerDTO CurrentPlayer
         {
             get => _matchDto?.CurrentPlayerDto;
             set => _matchDto.CurrentPlayerIndex = _matchDto.Players.TakeWhile(p => p.PlayerName != value.PlayerName).Count();
         }
+        public IEnumerable<Player> Players => _game?.Players;
         public int RequiredRoomSize =>  _requiredRoomSize;
         public PlayerCommandLog PlayerCommands => _commands;
         

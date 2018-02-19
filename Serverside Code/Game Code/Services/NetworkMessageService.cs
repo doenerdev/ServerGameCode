@@ -22,7 +22,7 @@ namespace ServerGameCode.Services
             _server = server;
         }
 
-        public void GotMessage(Player player, Message message)
+        public void GotMessage(Player playerSender, Message message)
         {
             NetworkMessageType messageType;
             var parseSuccessful = Enum.TryParse(message.Type, out messageType);
@@ -45,23 +45,46 @@ namespace ServerGameCode.Services
                         answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
                         answer = deck.ToMessage(answer);
 
-                        _server.Broadcast(answer);
+                        playerSender.Send(answer);
                         break;
                     case NetworkMessageType.RequestMarketplace:
                         var marketplace = this.DeckService().Marketplace;
                         answer = Message.Create(NetworkMessageType.ServerSentMarketplace.ToString("G"));
                         answer = marketplace.ToMessage(answer);
-                        _server.Broadcast(answer);
+                        playerSender.Send(answer);
                         break;
                     case NetworkMessageType.RequestHexMap:
                         var map = this.HexMapService().CurrentHexMapDto;
                         answer = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
                         answer = map.ToMessage(answer);
 
-                        _server.Broadcast(answer);
+                        playerSender.Send(answer);
                         break;
                     case NetworkMessageType.GameActionPerformed:
+                        Console.WriteLine("Received Network Action");
+                        answer = Message.Create(NetworkMessageType.ServerSentGameAction.ToString("G"));
 
+                        answer.Add(message.GetString(0));
+                        answer.Add(message.GetString(1));
+                        answer.Add(message.GetString(2));
+
+                        foreach (var player in _server.Players)                     {
+                            if (player != playerSender)
+                            {
+                                player.Send(answer);
+                            }
+                        }
+                        break;
+                    case NetworkMessageType.ChangeTurnPerformed:
+                        answer = Message.Create(NetworkMessageType.ServerSentChangeTurn.ToString("G"));
+
+                        foreach (var player in _server.Players)
+                        {
+                            if (player != playerSender)
+                            {
+                                player.Send(answer);
+                            }
+                        }
                         break;
                 }
             }
