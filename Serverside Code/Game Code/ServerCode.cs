@@ -113,7 +113,7 @@ namespace ServerGameCode {
             Console.WriteLine("Gameplay started");
             SetGameRoomInfoPlayers();
 	        ServiceContainer.GameRoomService.GameStartedState = GameStartedState.Started;
-	        ServiceContainer.GameRoomService.WriteToDb(PlayerIO.BigDB);
+	        ServiceContainer.GameRoomService.WriteToDb(PlayerIO.BigDB); //TODO add again later
 	        _turnManager.Initialize();
 	        ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
 	        ServiceContainer.NetworkMessageService.BroadcastRoomCreatedMessage();

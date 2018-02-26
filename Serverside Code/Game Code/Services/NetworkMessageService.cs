@@ -62,13 +62,15 @@ namespace ServerGameCode.Services
                         break;
                     case NetworkMessageType.GameActionPerformed:
                         Console.WriteLine("Received Network Action");
-                        answer = Message.Create(NetworkMessageType.ServerSentGameAction.ToString("G"));
 
+                        _server.ServiceContainer.GameRoomService.PlayerActionLog.AddPlayerAction(message);
+
+                        answer = Message.Create(NetworkMessageType.ServerSentGameAction.ToString("G"));
                         answer.Add(message.GetString(0));
                         answer.Add(message.GetString(1));
                         answer.Add(message.GetString(2));
 
-                        foreach (var player in _server.Players)                     {
+                        foreach (var player in _server.Players) {
                             if (player != playerSender)
                             {
                                 player.Send(answer);
@@ -85,6 +87,13 @@ namespace ServerGameCode.Services
                                 player.Send(answer);
                             }
                         }
+                        break;
+                    case NetworkMessageType.RequestNewTowerSegment:
+                        answer = Message.Create(NetworkMessageType.ServerSentNewTowerSegment.ToString("G"));
+                        answer = _server.ServiceContainer.ResourceService
+                            .GenerateNewTowerSegment()
+                            .ToMessage(answer);
+                        playerSender.Send(answer);
                         break;
                 }
             }
@@ -140,57 +149,5 @@ namespace ServerGameCode.Services
             _server.Broadcast("PlayerOnline", playerId);
         }
 
-        private void BroadcastCommandMessage(Player player, Message message)
-        {
-            CommandId commandId = (CommandId)Enum.Parse(typeof(CommandId), message.GetString(0));
-            PlayerCommand command = PlayerCommand.CreateFromMessageOptions(player, commandId, message.GetString(1));
-            this.GameRoomService().PlayerCommands.AddPlayerCommand(command);
-            this.GameRoomService().WriteCommandLogToDb(_server.PlayerIO.BigDB);
-
-            switch (commandId)
-            {
-                case CommandId.EndTurn:
-                    _server.TurnManager.SetNextActivePlayer();
-                    break;
-                default:
-                    Message commandMessage = Message.Create(message.Type, message.GetString(0));
-                    foreach (var connectedPlayer in _server.Players)
-                    {
-                        if (connectedPlayer.ConnectUserId != player.ConnectUserId)
-                        {
-                            player.Send(commandMessage);
-                        }
-                    }
-                    break;
-            }
-            try
-            {
-                /*CommandId commandId = (CommandId) Enum.Parse(typeof(CommandId), message.GetString(0));
-                PlayerCommand command = PlayerCommand.CreateFromString(player, commandId, message.GetString(1));
-                _server.GameRoomService.PlayerCommands.AddPlayerCommand(command);
-                _server.GameRoomService.WriteCommandLogToDb(_server.PlayerIO.BigDB);
-
-                switch (commandId)
-                {
-                    case CommandId.EndTurn:
-                        _server.TurnManager.SetNextActivePlayer();
-                        break;
-                    default:
-                        Message commandMessage = Message.Create(message.Type, message.GetString(0));
-                        foreach (var connectedPlayer in _server.Players)
-                        {
-                            if (connectedPlayer.ConnectUserId != player.ConnectUserId)
-                            {
-                                player.Send(commandMessage);
-                            }
-                        }
-                        break;
-                }*/
-            }
-            catch
-            {
-                Console.WriteLine("Failed at broadcasting command message");
-            } 
-        }
     }
 }

@@ -11,7 +11,7 @@ namespace ServerGameCode
     {
         protected DatabaseObject _databaseEntry;
 
-        public abstract DatabaseObject ToDdObject();
+        public abstract DatabaseObject ToDBObject();
         public abstract void WriteToDb(BigDB dbClient);
 
         public static T CreateFromDbObject(DatabaseObject dbObject)

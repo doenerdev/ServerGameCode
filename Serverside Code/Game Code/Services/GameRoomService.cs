@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
 using ServerClientShare.Helper;
+using ServerClientShare.Services;
 using ServerGameCode.Helper;
 
 namespace ServerGameCode
@@ -17,12 +18,13 @@ namespace ServerGameCode
 
         private RandomGenerator _rndGenerator;
         private Die _die;
-        private Game<Player> _game;
+        private PlayerService _playerService;
+        private ServerCode _server;
         private MatchDTO _matchDto;
 
         private string _currentPlayerIndex;
 
-        private PlayerCommandLog _commands;
+        private PlayerActionsLog _actionLog;
         private int _requiredRoomSize = TesingRoomSize; //TODO change back to 2
         private DatabaseObject _databaseEntry;
 
@@ -38,23 +40,24 @@ namespace ServerGameCode
             get => _matchDto?.CurrentPlayerDto;
             set => _matchDto.CurrentPlayerIndex = _matchDto.Players.TakeWhile(p => p.PlayerName != value.PlayerName).Count();
         }
-        public IEnumerable<Player> Players => _game?.Players;
+        public IEnumerable<Player> Players => _server?.Players;
         public int RequiredRoomSize =>  _requiredRoomSize;
-        public PlayerCommandLog PlayerCommands => _commands;
+        public PlayerActionsLog PlayerActionLog => _actionLog;
         
 
-        public GameRoomService(Game<Player> game, string gameId, RoomData roomData = null)
+        public GameRoomService(ServerCode server, string gameId, PlayerService playerService, RoomData roomData = null)
         {
-            _game = game;
+            _server = server;
             _matchDto = new MatchDTO()
             {
                 GameId = gameId,
             };
-            _commands = new PlayerCommandLog();
+            _actionLog = new PlayerActionsLog(_server);
             InitializeFromRoomData(roomData);
 
             _rndGenerator = new RandomGenerator();
             _die = new Die(_rndGenerator);
+            _playerService = playerService;
         }
 
         private void InitializeFromRoomData(RoomData roomData)
@@ -85,7 +88,8 @@ namespace ServerGameCode
 
         public void AddPlayer(Player player)
         {
-            _matchDto.AddPlayer(player.ConnectUserId);
+            var playerDto = _playerService.GenerateInitialPlayer(player.ConnectUserId, _matchDto.Players.Count);
+            _matchDto.AddPlayer(playerDto);
         }
 
         public void RemovePlayer(Player player)
@@ -119,23 +123,13 @@ namespace ServerGameCode
             }
         }
 
-        public override DatabaseObject ToDdObject()
+        public override DatabaseObject ToDBObject()
         {
             DatabaseObject dbObject = new DatabaseObject();
-            dbObject.Set("GameId", _game.RoomId);
+            dbObject.Set("GameId", _server.RoomId);
             dbObject.Set("GameStartedState", GameStartedState.ToString("G"));
             dbObject.Set("CurrentPlayerName", CurrentPlayer.PlayerName);
             dbObject.Set("RequiredRoomSize", _requiredRoomSize);
-
-            DatabaseArray commandLogDb = new DatabaseArray();
-            if (_commands.PlayerCommands != null)
-            {
-                foreach (var command in _commands.PlayerCommands)
-                {
-                    commandLogDb.Add(command.ToString());
-                }
-            }
-            dbObject.Set("CommandLog", commandLogDb);
 
             DatabaseArray dbPlayerIds = new DatabaseArray();
             foreach (var playerId in _matchDto.Players.Select(p => p.PlayerName))
@@ -144,20 +138,33 @@ namespace ServerGameCode
             }
             dbObject.Set("PlayerIds", dbPlayerIds);
 
+            dbObject.Set("Match", _matchDto.ToDBObject());
+            dbObject.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+            dbObject.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
+            dbObject.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
+            dbObject.Set("ActionLog", _actionLog.ToDBObject());
+
             return dbObject;
         }
 
         public override void WriteToDb(BigDB dbClient)
         {
-            DatabaseObject dbObject = ToDdObject();
+            dbClient.DeleteRange("GameSessions", "ByRequiredRoomSize", null, 0, 3);
+
+            DatabaseObject dbObject = ToDBObject();
             dbClient.CreateObject(
                 "GameSessions",
-                _game.RoomId,
+                _server.RoomId,
                 dbObject,
                 successCallback: receivedDbObject =>
                 {
                     _databaseEntry = receivedDbObject;
                     Console.WriteLine("Sucessfully wrote Server Room Info to DB");
+
+                    dbClient.Load("GameSessions", _server.RoomId, (DatabaseObject result) =>
+                    {
+                        HexMapDTO dto = HexMapDTO.FromDBObject(result.GetObject("HexMap"));
+                    });
                 },
                 errorCallback: error =>
                 {
@@ -170,7 +177,7 @@ namespace ServerGameCode
         {
             dbClient.LoadOrCreate(
                 "GameSessions",
-                _game.RoomId,
+                _server.RoomId,
                 successCallback: receivedDbObject =>
                 {
                     _databaseEntry = receivedDbObject;
@@ -181,36 +188,6 @@ namespace ServerGameCode
                 errorCallback: error =>
                 {
                     Console.WriteLine("An error occured while trying to write Active Player to DB");
-                }
-            );
-        }
-
-        public void WriteCommandLogToDb(BigDB dbClient)
-        {
-            dbClient.LoadOrCreate(
-                "GameSessions",
-                _game.RoomId,
-                successCallback: receivedDbObject =>
-                {
-                    _databaseEntry = receivedDbObject;
-
-                    DatabaseArray commandLogDb = new DatabaseArray();
-                    foreach (var commandList in _commands.PlayerCommands)
-                    {
-                        DatabaseArray commandLogTurnX = new DatabaseArray();
-                        foreach (var command in commandList.Value)
-                        {
-                            commandLogTurnX.Add(command.ToDbArray());
-                        }
-                        commandLogDb.Add(commandLogTurnX);
-                    }
-                    _databaseEntry.Set("CommandLog", commandLogDb);
-                    _databaseEntry.Save();
-                    Console.WriteLine("Sucessfully wrote Server Room Info to DB");
-                },
-                errorCallback: error =>
-                {
-                    Console.WriteLine("An error occured while trying to write Command Log to DB");
                 }
             );
         }

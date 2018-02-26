@@ -23,6 +23,9 @@ namespace ServerGameCode.Services
         private DeckService _deckService;
         private NetworkMessageService _networkMessageService;
         private GameRoomService _gameRoomService;
+        private ResourceService _resourceService;
+        private PlayerService _playerService;
+        private DatabaseService _databaseService;
 
         public ServerClientShare.Helper.RandomGenerator RandomGenerator
         {
@@ -53,19 +56,34 @@ namespace ServerGameCode.Services
         {
             get { return _networkMessageService; }
         }
+        public ResourceService ResourceService
+        {
+            get { return _resourceService; }
+        }
+        public PlayerService PlayerService
+        {
+            get { return _playerService; }
+        }
+        public DatabaseService DatabaseService
+        {
+            get { return _databaseService; }
+        }
 
         public ServerCode Server { get { return _server; } }
 
         public ServiceContainer(ServerCode server, string roomId, RoomData roomData)
         {
             _server = server;
+            _databaseService = new DatabaseService(server.PlayerIO.BigDB);
             _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
             _die = new ServerClientShare.Helper.Die(_rndGenerator);
             _hexCellService = new HexCellService(_die, _rndGenerator);
             _hexMapService = new HexMapService(_hexCellService, HexMapSize.M);
             _deckService = new DeckService(_rndGenerator);
             _networkMessageService = new NetworkMessageService(Server);
-            _gameRoomService = new GameRoomService(Server, roomId, roomData);
+            _resourceService = new ResourceService(_die, _rndGenerator);
+            _playerService = new PlayerService(_resourceService);
+            _gameRoomService = new GameRoomService(Server, roomId, _playerService, roomData);
         }
     }
 }
