@@ -15,66 +15,36 @@ namespace ServerGameCode.Services
     public class ServiceContainer : IServerAspect
     {
 
-        private ServerCode _server;
-        private ServerClientShare.Helper.RandomGenerator _rndGenerator;
-        private ServerClientShare.Helper.Die _die;
-        private HexCellService _hexCellService;
-        private HexMapService _hexMapService;
-        private DeckService _deckService;
-        private NetworkMessageService _networkMessageService;
-        private GameRoomService _gameRoomService;
-        private ResourceService _resourceService;
-        private PlayerService _playerService;
-        private DatabaseService _databaseService;
+        private readonly ServerCode _server;
+        private readonly ServerClientShare.Helper.RandomGenerator _rndGenerator;
+        private readonly ServerClientShare.Helper.Die _die;
+        private readonly HexCellService _hexCellService;
+        private readonly HexMapService _hexMapService;
+        private readonly DeckService _deckService;
+        private readonly NetworkMessageService _networkMessageService;
+        private readonly GameRoomService _gameRoomService;
+        private readonly ResourceService _resourceService;
+        private readonly PlayerService _playerService;
+        private readonly DatabaseService _databaseService;
+        private readonly LeaderService _leaderService;
 
-        public ServerClientShare.Helper.RandomGenerator RandomGenerator
-        {
-            get { return _rndGenerator;
-            } 
-        }
-        public ServerClientShare.Helper.Die Die
-        {
-            get { return _die; }
-        }
-        public GameRoomService GameRoomService
-        {
-            get { return _gameRoomService; }
-        }
-        public HexCellService HexCellService
-        {
-            get { return _hexCellService; }
-        }
-        public HexMapService HexMapService
-        {
-            get { return _hexMapService; }
-        }
-        public DeckService DeckService
-        {
-            get { return _deckService; }
-        }
-        public NetworkMessageService NetworkMessageService
-        {
-            get { return _networkMessageService; }
-        }
-        public ResourceService ResourceService
-        {
-            get { return _resourceService; }
-        }
-        public PlayerService PlayerService
-        {
-            get { return _playerService; }
-        }
-        public DatabaseService DatabaseService
-        {
-            get { return _databaseService; }
-        }
-
+        public ServerClientShare.Helper.RandomGenerator RandomGenerator => _rndGenerator;
+        public ServerClientShare.Helper.Die Die => _die;
+        public GameRoomService GameRoomService => _gameRoomService;
+        public HexCellService HexCellService => _hexCellService;
+        public HexMapService HexMapService => _hexMapService;
+        public DeckService DeckService => _deckService;
+        public NetworkMessageService NetworkMessageService => _networkMessageService;
+        public ResourceService ResourceService => _resourceService;
+        public PlayerService PlayerService => _playerService;
+        public DatabaseService DatabaseService => _databaseService;
+        public LeaderService LeaderService => _leaderService;
         public ServerCode Server { get { return _server; } }
 
         public ServiceContainer(ServerCode server, string roomId, RoomData roomData)
         {
             _server = server;
-            _databaseService = new DatabaseService(server.PlayerIO.BigDB);
+            _databaseService = new DatabaseService(server);
             _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
             _die = new ServerClientShare.Helper.Die(_rndGenerator);
             _hexCellService = new HexCellService(_die, _rndGenerator);
@@ -82,7 +52,8 @@ namespace ServerGameCode.Services
             _deckService = new DeckService(_rndGenerator);
             _networkMessageService = new NetworkMessageService(Server);
             _resourceService = new ResourceService(_die, _rndGenerator);
-            _playerService = new PlayerService(_resourceService);
+            _leaderService = new LeaderService();
+            _playerService = new PlayerService(_resourceService, _leaderService);
             _gameRoomService = new GameRoomService(Server, roomId, _playerService, roomData);
         }
     }

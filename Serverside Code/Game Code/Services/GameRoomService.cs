@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
+using ServerClientShare.Enums;
 using ServerClientShare.Helper;
 using ServerClientShare.Services;
 using ServerGameCode.Helper;
@@ -88,7 +89,8 @@ namespace ServerGameCode
 
         public void AddPlayer(Player player)
         {
-            var playerDto = _playerService.GenerateInitialPlayer(player.ConnectUserId, _matchDto.Players.Count);
+            var leaderType = (LeaderType) Enum.Parse(typeof(LeaderType), player.JoinData["LeaderType"]);
+            var playerDto = _playerService.GenerateInitialPlayer(player.ConnectUserId, _matchDto.Players.Count, leaderType);
             _matchDto.AddPlayer(playerDto);
         }
 
@@ -138,11 +140,16 @@ namespace ServerGameCode
             }
             dbObject.Set("PlayerIds", dbPlayerIds);
 
-            dbObject.Set("Match", _matchDto.ToDBObject());
-            dbObject.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
-            dbObject.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-            dbObject.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-            dbObject.Set("ActionLog", _actionLog.ToDBObject());
+            DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
+            dbGameplayPersistenceData.Set("Match", _matchDto.ToDBObject());
+            dbGameplayPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
+            dbGameplayPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
+            dbGameplayPersistenceData.Set("PlayerActionLog", _actionLog.ToDBObject());
+            dbObject.Set("Turns", new DatabaseArray()
+            {
+                dbGameplayPersistenceData
+            });
 
             return dbObject;
         }
@@ -161,10 +168,7 @@ namespace ServerGameCode
                     _databaseEntry = receivedDbObject;
                     Console.WriteLine("Sucessfully wrote Server Room Info to DB");
 
-                    dbClient.Load("GameSessions", _server.RoomId, (DatabaseObject result) =>
-                    {
-                        HexMapDTO dto = HexMapDTO.FromDBObject(result.GetObject("HexMap"));
-                    });
+                 
                 },
                 errorCallback: error =>
                 {
@@ -190,6 +194,11 @@ namespace ServerGameCode
                     Console.WriteLine("An error occured while trying to write Active Player to DB");
                 }
             );
+        }
+
+        public void UpdateMatch(MatchDTO dto)
+        {
+            _matchDto = dto;
         }
     }
 }

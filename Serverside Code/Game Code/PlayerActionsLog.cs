@@ -19,9 +19,10 @@ namespace ServerGameCode
             get { return _playerActions.AsReadOnly(); }
         }
 
-        public PlayerActionsLog(ServerCode _server)
+        public PlayerActionsLog(ServerCode server)
         {
             _playerActions = new List<PlayerAction>();
+            _server = server;
         }
 
         public void AddPlayerAction(PlayerAction action)

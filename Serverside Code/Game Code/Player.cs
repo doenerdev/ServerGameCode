@@ -13,38 +13,12 @@ using ServerClientShare.DTO;
 
 namespace ServerGameCode
 {
-    public class Player : BasePlayer, IMessageSerializable
+    public class Player : BasePlayer
     {
-        public const string MessageType = "PlayerInfo";
-
-        private PlayerDTO _dto;
-
-        public PlayerDTO DTO => _dto;
-
-
         public Player() : base()
         {
             
         }
 
-        public Message SerializeToMessage()
-        {
-            Message message = Message.Create(MessageType);
-            message.Add(ConnectUserId);
-            return message;
-        }
-
-        public void PopulateByMessageDeserialization(Message message)
-        {
-            try
-            {
-                if (ConnectUserId != message.GetString(0)) return;
-                //do nothing yet
-            }
-            catch
-            {
-                
-            }
-        }
     }
 }
