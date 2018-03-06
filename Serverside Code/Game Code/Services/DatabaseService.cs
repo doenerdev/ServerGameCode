@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
+using ServerClientShare.Models;
 using ServerGameCode.Interfaces;
 
 namespace ServerGameCode.Services
@@ -26,13 +27,15 @@ namespace ServerGameCode.Services
         public void WriteActionLogToDb(PlayerActionsLog log)
         {
             var turnNumber = Server.ServiceContainer.GameRoomService.MatchDTO.TurnNumber;
-            Server.PlayerIO.BigDB.LoadOrCreate(
+            Server.PlayerIO.BigDB.Load(
                 "GameSessions",
                 Server.RoomId,
                 successCallback: receivedDbObject =>
                 {
+                    if (receivedDbObject == null) return;
+
                     DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns.Count > turnNumber)
+                    if (turns != null && turns.Count > turnNumber)
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
@@ -63,14 +66,17 @@ namespace ServerGameCode.Services
 
         public void WriteMatchToDb()
         {
+     
             var turnNumber = Server.ServiceContainer.GameRoomService.MatchDTO.TurnNumber;
-            Server.PlayerIO.BigDB.LoadOrCreate(
+            Server.PlayerIO.BigDB.Load(
                 "GameSessions",
                 Server.RoomId,
                 successCallback: receivedDbObject =>
                 {
+                    if (receivedDbObject == null) return;
+
                     DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns.Count > turnNumber)
+                    if (turns != null && turns.Count > turnNumber)
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
@@ -102,13 +108,15 @@ namespace ServerGameCode.Services
         public void WriteHexMapToDb()
         {
             var turnNumber = Server.ServiceContainer.GameRoomService.MatchDTO.TurnNumber;
-            Server.PlayerIO.BigDB.LoadOrCreate(
+            Server.PlayerIO.BigDB.Load(
                 "GameSessions",
                 Server.RoomId,
                 successCallback: receivedDbObject =>
                 {
+                    if (receivedDbObject == null) return;
+
                     DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns.Count > turnNumber)
+                    if (turns != null && turns.Count > turnNumber)
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
@@ -140,13 +148,15 @@ namespace ServerGameCode.Services
         public void WriteMarketplaceToDb()
         {
             var turnNumber = Server.ServiceContainer.GameRoomService.MatchDTO.TurnNumber;
-            Server.PlayerIO.BigDB.LoadOrCreate(
+            Server.PlayerIO.BigDB.Load(
                 "GameSessions",
                 Server.RoomId,
                 successCallback: receivedDbObject =>
                 {
+                    if (receivedDbObject == null) return;
+
                     DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns.Count > turnNumber)
+                    if (turns != null && turns.Count > turnNumber)
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
@@ -178,13 +188,15 @@ namespace ServerGameCode.Services
         public void WriteDeckToDb()
         {
             var turnNumber = Server.ServiceContainer.GameRoomService.MatchDTO.TurnNumber;
-            Server.PlayerIO.BigDB.LoadOrCreate(
+            Server.PlayerIO.BigDB.Load(
                 "GameSessions",
                 Server.RoomId,
                 successCallback: receivedDbObject =>
                 {
+                    if (receivedDbObject == null) return;
+
                     DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns.Count > turnNumber)
+                    if (turns != null && turns.Count > turnNumber)
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(

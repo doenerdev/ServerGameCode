@@ -33,10 +33,13 @@ namespace ServerGameCode {
 	        get { return _turnManager; }
 	    }
 
+
+
 		// This method is called when an instance of your the server is created
 		public override void GameStarted()
 		{
             Console.WriteLine("Server has started: " + RoomId);
+		    PreloadPlayerObjects = true;
 
             //if this is a continued server, skip waiting for opponents and start right away
             if (IsNewGame() == false)
@@ -60,7 +63,7 @@ namespace ServerGameCode {
 	    {
 	        Console.WriteLine("Initializeing continued server");
 	        Visible = false;
-	        _serviceContainer = new ServiceContainer(this, this.RoomId, RoomData);
+	       
             _turnManager = new TurnManager(this);
 
             try
@@ -70,8 +73,10 @@ namespace ServerGameCode {
 	                RoomData["GameSessionId"],
 	                successCallback: gameRoomInfoDb =>
 	                {
-	                    //_gameRoomService = GameRoomService.CreateFromDbObject(this, gameRoomInfoDb);
-	                    StartGameplay();
+	                    DatabaseArray turns = gameRoomInfoDb.GetArray("Turns");
+	                    var currentTurn = (DatabaseObject) gameRoomInfoDb.GetArray("Turns")[turns.Count-1];
+	                    _serviceContainer = new ServiceContainer(currentTurn, this, this.RoomId, RoomData);
+	                    Console.WriteLine("Fetched game sesson info from db");
 	                },
 	                errorCallback: error =>
 	                {
@@ -110,6 +115,29 @@ namespace ServerGameCode {
 
 	    public void StartGameplay()
 	    {
+	        foreach (var player in Players)
+	        {
+	            var gameSessions = player.PlayerObject.GetArray("GameSessions");
+	            if (gameSessions == null)
+	            {
+                    var gameSession = new DatabaseObject();
+	                gameSession.Set("GameId", RoomId);
+	                gameSession.Set("GameStartedState", _serviceContainer.GameRoomService.GameStartedState.ToString("G"));
+	                gameSession.Set("Match", _serviceContainer.GameRoomService.MatchDTO.ToDBObject());
+                    var gameSessionsArray = new DatabaseArray();
+	                gameSessionsArray.Add(gameSession);
+	                player.PlayerObject.Set("GameSessions", gameSessionsArray);
+	            }
+	            else
+	            {
+	                var gameSession = new DatabaseObject();
+	                gameSession.Set("GameId", RoomId);
+	                gameSessions.Add(gameSession);
+                }
+                player.PlayerObject.Save();
+	        }
+
+
             Console.WriteLine("Gameplay started");
             SetGameRoomInfoPlayers();
 	        ServiceContainer.GameRoomService.GameStartedState = GameStartedState.Started;

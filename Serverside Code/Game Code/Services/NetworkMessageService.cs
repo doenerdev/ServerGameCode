@@ -31,6 +31,7 @@ namespace ServerGameCode.Services
             Console.WriteLine("Message type:" + messageType);
             if (parseSuccessful)
             {
+                var playerSenderDto = this.GameRoomService().MatchDTO.Players.Where(p => p.PlayerName == playerSender.ConnectUserId);
                 Message answer;
                 uint offset = 0;
 
@@ -39,9 +40,18 @@ namespace ServerGameCode.Services
                     /*case "Command":
                         BroadcastCommandMessage(player, message);
                         break;
-                    case "PlayerLeft":
-                        player.Disconnect();
-                        break;*/
+                    */
+                    case NetworkMessageType.RequestInitialGameplayData:
+                        Console.WriteLine("Received Gameplay Data Request");
+                        this.GameRoomService().GenerateInitialGameplayDataDTO(playerSender, (initialDataDto) =>
+                        {
+                            answer = Message.Create(NetworkMessageType.ServerSentInitialGameplayData.ToString("G"));
+                            answer = initialDataDto.ToMessage(answer);
+
+                            Console.WriteLine("Answering Gameplay Data Request");
+                            playerSender.Send(answer);
+                        });
+                        break;
                     case NetworkMessageType.RequestDeck:
                         var deck = this.DeckService().Deck;
                         answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
@@ -59,6 +69,12 @@ namespace ServerGameCode.Services
                         var map = this.HexMapService().CurrentHexMapDto;
                         answer = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
                         answer = map.ToMessage(answer);
+
+                        playerSender.Send(answer);
+                        break;
+                    case NetworkMessageType.RequestActionLog:
+                        answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
+                        answer = this.GameRoomService().PlayerActionLog.DTO.ToMessage(answer);
 
                         playerSender.Send(answer);
                         break;
@@ -135,6 +151,7 @@ namespace ServerGameCode.Services
 
         public void BroadcastRoomCreatedMessage()
         {
+            Console.WriteLine("Broadcast Room Created");
             Message message = Message.Create("RoomCreated");
             message = this.GameRoomService().MatchDTO.ToMessage(message);
             _server.Broadcast(message);
@@ -142,6 +159,7 @@ namespace ServerGameCode.Services
 
         public void BroadcastPlayerListMessage()
         {
+
             Message message = Message.Create(NetworkMessageType.ServerSentReady.ToString("G"));
             message = this.GameRoomService().MatchDTO.ToMessage(message);
             _server.Broadcast(message);

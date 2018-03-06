@@ -56,5 +56,21 @@ namespace ServerGameCode.Services
             _playerService = new PlayerService(_resourceService, _leaderService);
             _gameRoomService = new GameRoomService(Server, roomId, _playerService, roomData);
         }
+
+        public ServiceContainer(DatabaseObject dbObject, ServerCode server, string roomId, RoomData roomData)
+        {
+            _server = server;
+            _databaseService = new DatabaseService(server);
+            _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
+            _die = new ServerClientShare.Helper.Die(_rndGenerator);
+            _hexCellService = new HexCellService(_die, _rndGenerator);
+            _hexMapService = new HexMapService(dbObject, _hexCellService, HexMapSize.M);
+            _deckService = new DeckService(dbObject, _rndGenerator);
+            _networkMessageService = new NetworkMessageService(Server);
+            _resourceService = new ResourceService(_die, _rndGenerator);
+            _leaderService = new LeaderService();
+            _playerService = new PlayerService(_resourceService, _leaderService);
+            _gameRoomService = new GameRoomService(dbObject, Server, roomId, _playerService, roomData);
+        }
     }
 }
