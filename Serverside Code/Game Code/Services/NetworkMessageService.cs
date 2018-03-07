@@ -81,7 +81,7 @@ namespace ServerGameCode.Services
                     case NetworkMessageType.GameActionPerformed:
                         Console.WriteLine("Received Network Action");
 
-                        _server.ServiceContainer.GameRoomService.PlayerActionLog.AddPlayerAction(message);
+                        this.GameRoomService().PlayerActionLog.AddPlayerAction(message);
 
                         answer = Message.Create(NetworkMessageType.ServerSentGameAction.ToString("G"));
                         answer.Add(message.GetString(0));
@@ -108,30 +108,35 @@ namespace ServerGameCode.Services
                         break;
                     case NetworkMessageType.RequestNewTowerSegment:
                         answer = Message.Create(NetworkMessageType.ServerSentNewTowerSegment.ToString("G"));
-                        answer = _server.ServiceContainer.ResourceService
+                        answer = this.ResourceService()
                             .GenerateNewTowerSegment()
                             .ToMessage(answer);
                         playerSender.Send(answer);
                         break;
                     case NetworkMessageType.ClientSentHexMap:
                         var hexMapDto = HexMapDTO.FromMessageArguments(message, ref offset);
-                        Server.ServiceContainer.HexMapService.UpdateHexMap(hexMapDto);
-                        Server.ServiceContainer.DatabaseService.WriteHexMapToDb();
+                        this.HexMapService().UpdateHexMap(hexMapDto);
+                        this.DatabaseService().WriteHexMapToDb();
                         break;
                     case NetworkMessageType.ClientSentMatch:
                         var matchDto = MatchDTO.FromMessageArguments(message, ref offset);
-                        Server.ServiceContainer.GameRoomService.UpdateMatch(matchDto);
-                        Server.ServiceContainer.DatabaseService.WriteMatchToDb();
+                        this.GameRoomService().UpdateMatch(matchDto);
+                        this.DatabaseService().WriteMatchToDb();
                         break;
                     case NetworkMessageType.ClientSentMarketplace:
                         var marketplaceDto = DeckDTO.FromMessageArguments(message, ref offset);
-                        Server.ServiceContainer.DeckService.UpdateMarketplace(marketplaceDto);
-                        Server.ServiceContainer.DatabaseService.WriteMarketplaceToDb();
+                        this.DeckService().UpdateMarketplace(marketplaceDto);
+                        this.DatabaseService().WriteMarketplaceToDb();
                         break;
                     case NetworkMessageType.ClientSentDeck:
                         var deckDto = DeckDTO.FromMessageArguments(message, ref offset);
-                        Server.ServiceContainer.DeckService.UpdateDeck(deckDto);
-                        Server.ServiceContainer.DatabaseService.WriteDeckToDb();
+                        this.DeckService().UpdateDeck(deckDto);
+                        this.DatabaseService().WriteDeckToDb();
+                        break;
+                    case NetworkMessageType.ClientSentActionLogIndex:
+                        var actionLogIndex = message.GetInt(0);
+                        this.GameRoomService().UpdateActionLogIndex(playerSender, actionLogIndex);
+                        this.DatabaseService().WriteMatchToDb();
                         break;
                 }
             }

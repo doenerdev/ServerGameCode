@@ -31,6 +31,16 @@ namespace ServerGameCode.ExtensionMethods
             return aspect.Server.ServiceContainer.NetworkMessageService;
         }
 
+        public static ResourceService ResourceService(this IServerAspect aspect)
+        {
+            return aspect.Server.ServiceContainer.ResourceService;
+        }
+
+        public static DatabaseService DatabaseService(this IServerAspect aspect)
+        {
+            return aspect.Server.ServiceContainer.DatabaseService;
+        }
+
         public static GameRoomService GameRoomService(this IServerAspect aspect)
         {
             return aspect.Server.ServiceContainer.GameRoomService;

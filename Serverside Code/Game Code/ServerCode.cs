@@ -73,9 +73,7 @@ namespace ServerGameCode {
 	                RoomData["GameSessionId"],
 	                successCallback: gameRoomInfoDb =>
 	                {
-	                    DatabaseArray turns = gameRoomInfoDb.GetArray("Turns");
-	                    var currentTurn = (DatabaseObject) gameRoomInfoDb.GetArray("Turns")[turns.Count-1];
-	                    _serviceContainer = new ServiceContainer(currentTurn, this, this.RoomId, RoomData);
+	                    _serviceContainer = new ServiceContainer(gameRoomInfoDb, this, this.RoomId, RoomData);
 	                    Console.WriteLine("Fetched game sesson info from db");
 	                },
 	                errorCallback: error =>

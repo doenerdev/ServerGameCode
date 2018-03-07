@@ -63,10 +63,11 @@ namespace ServerGameCode
             _playerService = playerService;
         }
 
-        public GameRoomService(DatabaseObject dbObject, ServerCode server, string gameId, PlayerService playerService, RoomData roomData = null) : this(server, gameId, playerService, roomData)
+        public GameRoomService(DatabaseObject dbObjectMatch, DatabaseObject dbObjectActionLog, ServerCode server, 
+            string gameId, PlayerService playerService, RoomData roomData = null) : this(server, gameId, playerService, roomData)
         {
-            _matchDto = MatchDTO.FromDBObject(dbObject.GetObject("Match"));
-            _actionLog = PlayerActionsLog.FromDBObject(dbObject.GetObject("PlayerActionLog"), server);
+            _matchDto = MatchDTO.FromDBObject(dbObjectMatch);
+            _actionLog = PlayerActionsLog.FromDBObject(dbObjectActionLog, server);
         }
 
         private void InitializeFromRoomData(RoomData roomData)
@@ -121,13 +122,13 @@ namespace ServerGameCode
                 dbPlayerIds.Add(playerId);
             }
             dbObject.Set("PlayerIds", dbPlayerIds);
+            dbObject.Set("PlayerActionLog", _actionLog.ToDBObject());
 
             DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
             dbGameplayPersistenceData.Set("Match", _matchDto.ToDBObject());
             dbGameplayPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
             dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
             dbGameplayPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-            dbGameplayPersistenceData.Set("PlayerActionLog", _actionLog.ToDBObject());
             dbObject.Set("Turns", new DatabaseArray()
             {
                 dbGameplayPersistenceData
@@ -182,7 +183,27 @@ namespace ServerGameCode
 
         public void UpdateMatch(MatchDTO dto)
         {
+            //keep the old playerDtos ActionLogIndex, it should only be updated through messages
+            foreach (var playerDto in _matchDto.Players)
+            {
+                var player = dto.Players.SingleOrDefault(p => p.PlayerName == playerDto.PlayerName);
+                if (player != null)
+                {
+                    player.CurrentActionLogIndex = playerDto.CurrentActionLogIndex;
+                    dto.RemovePlayer(playerDto.PlayerName);
+                    dto.AddPlayer(player);
+                }
+            }
             _matchDto = dto;
+        }
+
+        public void UpdateActionLogIndex(Player player, int index)
+        {
+            var playerDto = MatchDTO.Players.SingleOrDefault(p => p.PlayerName == player.ConnectUserId);
+            if (playerDto != null)
+            {
+                playerDto.CurrentActionLogIndex = index;
+            }
         }
 
         public void GenerateInitialGameplayDataDTO(Player player, Action<InitialGameplayDataDTO> successCallback)
@@ -221,6 +242,7 @@ namespace ServerGameCode
                         {
                             dto = InitialGameplayDataDTO.FromDBObject(turns.GetObject(playerDto.CurrentTurn));
                         }
+                        dto.ActionLog = PlayerActionsLogDTO.FromDBObject(receivedDbObject.GetObject("PlayerActionLog"));
 
                         Console.WriteLine("Retrieved Initial Gameplay Data for Turn:" + (playerDto.CurrentTurn > 0 ? playerDto.CurrentTurn - 1 : 0));
                         successCallback(dto);

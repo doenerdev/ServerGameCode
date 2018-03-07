@@ -34,26 +34,7 @@ namespace ServerGameCode.Services
                 {
                     if (receivedDbObject == null) return;
 
-                    DatabaseArray turns = receivedDbObject.GetArray("Turns");
-                    if (turns != null && turns.Count > turnNumber)
-                    {
-                        DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
-                        dbGameplayPersistenceData.Set(
-                            "PlayerActionLog", 
-                            log.ToDBObject()
-                        );
-                    }
-                    else
-                    {
-                        DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-                        dbGameplayPersistenceData.Set("Match", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
-                        dbGameplayPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-                        dbGameplayPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-                        dbGameplayPersistenceData.Set("PlayerActionLog", Server.ServiceContainer.GameRoomService.PlayerActionLog.ToDBObject());
-                        turns.Add(dbGameplayPersistenceData);
-                    }
-
+                    receivedDbObject.Set("PlayerActionLog", log.ToDBObject());
                     receivedDbObject.Save();
                     Console.WriteLine("Sucessfully updated action log in DB");
                 },
