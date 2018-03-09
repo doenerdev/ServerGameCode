@@ -140,6 +140,13 @@ namespace ServerGameCode.Services
                         break;
                 }
             }
+            else
+            {
+                if (message.Type == "PlayerLeft")
+                {
+                    playerSender.Disconnect();
+                }
+            }
         }
 
         public void BroadcastMessage(NetworkMessageType type, string content = null)

@@ -20,20 +20,12 @@ namespace ServerGameCode {
 	{
 	    private ServiceContainer _serviceContainer;
 	   
-	    private TurnManager _turnManager;
 	    private bool _gameplayStarted = false;
 
 	    public ServiceContainer ServiceContainer
 	    {
 	        get { return _serviceContainer; }
 	    }
-	    
-	    public TurnManager TurnManager
-	    {
-	        get { return _turnManager; }
-	    }
-
-
 
 		// This method is called when an instance of your the server is created
 		public override void GameStarted()
@@ -42,29 +34,29 @@ namespace ServerGameCode {
 		    PreloadPlayerObjects = true;
 
             //if this is a continued server, skip waiting for opponents and start right away
-            if (IsNewGame() == false)
+		    IsNewGame((newGame) =>
 		    {
-                InitializeContinuedGame();
-		    }
-		    else
-		    {
-		        InitializeNewGame();
-		    }
+		        if (newGame == false)
+		        {
+		            InitializeContinuedGame();
+		        }
+		        else
+		        {
+		            InitializeNewGame();
+		        }
+            });
         }
 
 	    private void InitializeNewGame()
 	    {
 	        Console.WriteLine("Initializing new server");
             _serviceContainer = new ServiceContainer(this, this.RoomId, RoomData);
-            _turnManager = new TurnManager(this);
         }
 
         private void InitializeContinuedGame()
 	    {
 	        Console.WriteLine("Initializeing continued server");
-	        Visible = false;
-	       
-            _turnManager = new TurnManager(this);
+            HideFromMatchmaking();
 
             try
 	        {
@@ -105,24 +97,32 @@ namespace ServerGameCode {
 	        }
 	    }
 
-	    private bool IsNewGame()
+	    public void IsNewGame(Action<bool> callback)
 	    {
-            //check whether this is a new server or if this a a continued server session
-	        return (RoomData != null && (RoomData.ContainsKey("NewGame") == false || RoomData["NewGame"] != "true")) == false;
+            PlayerIO.BigDB.Load(
+	            "GameSessions",
+	            this.RoomId,
+	            successCallback: gameRoomInfoDb => { callback(gameRoomInfoDb == null); },
+	            errorCallback: error =>
+	            {
+	                callback(false);
+	            }
+	        );
+           
 	    }
 
-	    public void StartGameplay()
+	    private void StartInitialGameplay()
 	    {
 	        foreach (var player in Players)
 	        {
 	            var gameSessions = player.PlayerObject.GetArray("GameSessions");
 	            if (gameSessions == null)
 	            {
-                    var gameSession = new DatabaseObject();
+	                var gameSession = new DatabaseObject();
 	                gameSession.Set("GameId", RoomId);
 	                gameSession.Set("GameStartedState", _serviceContainer.GameRoomService.GameStartedState.ToString("G"));
 	                gameSession.Set("Match", _serviceContainer.GameRoomService.MatchDTO.ToDBObject());
-                    var gameSessionsArray = new DatabaseArray();
+	                var gameSessionsArray = new DatabaseArray();
 	                gameSessionsArray.Add(gameSession);
 	                player.PlayerObject.Set("GameSessions", gameSessionsArray);
 	            }
@@ -131,21 +131,30 @@ namespace ServerGameCode {
 	                var gameSession = new DatabaseObject();
 	                gameSession.Set("GameId", RoomId);
 	                gameSessions.Add(gameSession);
-                }
-                player.PlayerObject.Save();
+	            }
+	            player.PlayerObject.Save();
 	        }
 
 
-            Console.WriteLine("Gameplay started");
-            SetGameRoomInfoPlayers();
+	        Console.WriteLine("Gameplay started");	
+	        SetGameRoomInfoPlayers();
 	        ServiceContainer.GameRoomService.GameStartedState = GameStartedState.Started;
-	        ServiceContainer.GameRoomService.WriteToDb(PlayerIO.BigDB); //TODO add again later
-	        _turnManager.Initialize();
-	        ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
-	        ServiceContainer.NetworkMessageService.BroadcastRoomCreatedMessage();
-	        //ServiceContainer.NetworkMessageService.BroadcastGameStartedMessage();
+	        ServiceContainer.GameRoomService.WriteInitialDataToDb(PlayerIO.BigDB, () =>
+	        {
+	            ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
+	            ServiceContainer.NetworkMessageService.BroadcastRoomCreatedMessage();
+            }); //TODO add again later
 
-            _gameplayStarted = true;
+	        _gameplayStarted = true;
+        }
+
+	    private void StartContinuedGameplay()
+	    {
+	        Console.WriteLine("Gameplay started");
+	        SetGameRoomInfoPlayers();
+	        ServiceContainer.NetworkMessageService.BroadcastRoomCreatedMessage();
+
+	        _gameplayStarted = true;
         }
 
 	    public override bool AllowUserJoin(Player player)
@@ -171,16 +180,25 @@ namespace ServerGameCode {
 				}
 			}
 
-		    if (PlayerCount == ServiceContainer.GameRoomService.RequiredRoomSize)
-		    {
-		        Console.WriteLine("Room " + RoomId + " reached its required room size.");
-		        Visible = false; //Make this room invisble once the required room size is reached to prevent this room from showing up in public room lists
-
-                if (_gameplayStarted == false)
-		        {
-		            StartGameplay();
-		        }
-		    }
+            IsNewGame((newGame) =>
+            {
+                if (newGame)
+                {
+                    if (PlayerCount == ServiceContainer.GameRoomService.RequiredRoomSize)
+                    {
+                        Console.WriteLine("NEW GAME!!!!!!!!!!");
+                        Console.WriteLine("Room " + RoomId + " reached its required room size.");
+                        HideFromMatchmaking();
+                        StartInitialGameplay();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("CONTINUED GAME!!!!!!!!!");
+                    HideFromMatchmaking();
+                    StartContinuedGameplay();
+                }
+            });
 		}
 
 		// This method is called when a player leaves the server
@@ -198,6 +216,11 @@ namespace ServerGameCode {
 	    {
 	        return ServiceContainer.GameRoomService?.RequiredRoomSize == PlayerCount;
 	    }
+
+	    public void HideFromMatchmaking()
+	    {
+	        Visible = false;
+        }
 
 		// This method is called when a player sends a message into the server code
 		public override void GotMessage(Player player, Message message)
