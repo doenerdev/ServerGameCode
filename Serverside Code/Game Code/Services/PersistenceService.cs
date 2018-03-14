@@ -183,9 +183,11 @@ namespace ServerGameCode.Services
             {
                 initialTurn = (_gameRoomService.MatchDTO.TurnNumber - playerDto.CurrentTurn) > 1
                     || ((_gameRoomService.MatchDTO.TurnNumber - playerDto.CurrentTurn) == 1 && _gameRoomService.MatchDTO.CurrentPlayerIndex != playerDto.PlayerIndex);
-                turnNumber = initialTurn ? playerDto.CurrentTurn + 1 : playerDto.CurrentTurn;
+                turnNumber = initialTurn ? playerDto.CurrentTurn + 1 : _gameRoomService.MatchDTO.TurnNumber;
             }
 
+            Console.WriteLine("Turn Difference:" + (_gameRoomService.MatchDTO.TurnNumber - playerDto.CurrentTurn));
+            Console.WriteLine("Is CurrentPlayer:" + (_gameRoomService.MatchDTO.CurrentPlayerIndex != playerDto.PlayerIndex));
 
             Console.WriteLine("Turns Count:" + persistenceData.Turns.Count);
             Console.WriteLine("Initial Turns Count:" + persistenceData.InitialTurns.Count);

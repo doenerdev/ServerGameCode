@@ -19,7 +19,7 @@ namespace ServerGameCode.Services
     {
         private ServerCode _server;
 
-        private static readonly Dictionary<NetworkMessageType, INetworkMessageHandler> _networkMessageHandler = new Dictionary<NetworkMessageType, INetworkMessageHandler>()
+        private readonly Dictionary<NetworkMessageType, INetworkMessageHandler> _networkMessageHandler = new Dictionary<NetworkMessageType, INetworkMessageHandler>()
         {
             { NetworkMessageType.ClientSentMatch, new ClientSentUpdateMatchHandler() },
             { NetworkMessageType.ClientSentHexMap, new ClientSentUpdateHexMapHandler() },

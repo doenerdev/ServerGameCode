@@ -22,7 +22,7 @@ namespace ServerGameCode.NetworkMessageHandler
 
             Console.WriteLine("Client " + sender.ConnectUserId + " sent change turn:" + messageDto.TurnNumber);
             serviceContainer.GameRoomService.UpdatePlayerTurnNumber(sender, messageDto.TurnNumber);
-            serviceContainer.PersistenceService.AddInitialTurnData(messageDto.TurnNumber, messageDto.NextPlayerIndex);
+            serviceContainer.PersistenceService.AddInitialTurnData(messageDto.TurnNumber + 1, messageDto.NextPlayerIndex);
 
 
 
