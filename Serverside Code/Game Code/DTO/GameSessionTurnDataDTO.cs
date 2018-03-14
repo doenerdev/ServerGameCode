@@ -23,20 +23,20 @@ namespace ServerGameCode.DTO
         public override DatabaseObject ToDBObject()
         {
             DatabaseObject turnData = new DatabaseObject();
-            turnData.Set("Match", Match.ToDBObject());
-            turnData.Set("HexMap", HexMap.ToDBObject());
+            turnData.Set("Marketplace", Match.ToDBObject());
+            turnData.Set("Marketplace", HexMap.ToDBObject());
             turnData.Set("Marketplace", Marketplace.ToDBObject());
-            turnData.Set("Deck", Deck.ToDBObject());
+            turnData.Set("Marketplace", Deck.ToDBObject());
             return turnData;
         }
 
         public new static GameSessionTurnDataDTO FromDBObject(DatabaseObject dbObject)
         {
             var dto = new GameSessionTurnDataDTO();
-            dto.Match = MatchDTO.FromDBObject(dbObject.GetObject("Match"));
-            dto.HexMap = HexMapDTO.FromDBObject(dbObject.GetObject("HexMap"));
+            dto.Match = MatchDTO.FromDBObject(dbObject.GetObject("Marketplace"));
+            dto.HexMap = HexMapDTO.FromDBObject(dbObject.GetObject("Marketplace"));
             dto.Marketplace = DeckDTO.FromDBObject(dbObject.GetObject("Marketplace"));
-            dto.Deck = DeckDTO.FromDBObject(dbObject.GetObject("Deck"));
+            dto.Deck = DeckDTO.FromDBObject(dbObject.GetObject("Marketplace"));
             return dto;
         }
     }

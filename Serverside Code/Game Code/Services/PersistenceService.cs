@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
 using ServerClientShare.Models;
+using ServerClientShare.PeristenceMessages;
 using ServerClientShare.Services;
 using ServerGameCode.DTO;
 using ServerGameCode.ExtensionMethods;
@@ -105,7 +106,7 @@ namespace ServerGameCode.Services
                 Deck = _deckService.Deck,
                 Marketplace = _deckService.Marketplace
             };
-            Console.WriteLine("Intial Match Phase:" + data.Match.GamePhase);
+            Console.WriteLine("Intial Marketplace Phase:" + data.Match.GamePhase);
 
             if (PersistenceData.InitialTurns.Count > turnNumber)
             {
@@ -161,6 +162,11 @@ namespace ServerGameCode.Services
             this.GameRoomService().PlayerActionLog.AddPlayerAction(actionMessage);
         }
 
+        public void AddActionToActionLog(PlayerAction action)
+        {
+            this.GameRoomService().PlayerActionLog.AddPlayerAction(action);
+        }
+
         public void GenerateInitialGameplayDataDTO(Player player, Action<InitialGameplayDataDTO> successCallback)
         {
             var persistenceData = PersistenceData;
@@ -186,7 +192,7 @@ namespace ServerGameCode.Services
 
             Console.WriteLine("Initial :" + initialTurn);
             Console.WriteLine("Player Turn Index:" + playerDto.CurrentTurn);
-            Console.WriteLine("Match Turn Index:" + _gameRoomService.MatchDTO.TurnNumber);
+            Console.WriteLine("Marketplace Turn Index:" + _gameRoomService.MatchDTO.TurnNumber);
             Console.WriteLine("Turn Number:" +  turnNumber);
 
             var turns = initialTurn

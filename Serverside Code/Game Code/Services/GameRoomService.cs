@@ -103,20 +103,20 @@ namespace ServerGameCode
             dbObject.Set("PlayerActionLog", _actionLog.ToDBObject());
 
             DatabaseObject initialPersistenceData = new DatabaseObject();
-            initialPersistenceData.Set("Match", _matchDto.ToDBObject());
-            initialPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+            initialPersistenceData.Set("Marketplace", _matchDto.ToDBObject());
+            initialPersistenceData.Set("Marketplace", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
             initialPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-            initialPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
+            initialPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Deck.ToDBObject());
             dbObject.Set("InitialTurns", new DatabaseArray()
             {
                 initialPersistenceData
             });
 
             DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-            dbGameplayPersistenceData.Set("Match", _matchDto.ToDBObject());
-            dbGameplayPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+            dbGameplayPersistenceData.Set("Marketplace", _matchDto.ToDBObject());
+            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
             dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-            dbGameplayPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
+            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Deck.ToDBObject());
             dbObject.Set("Turns", new DatabaseArray()
             {
                 dbGameplayPersistenceData

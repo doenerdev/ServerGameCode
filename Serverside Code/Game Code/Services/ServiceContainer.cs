@@ -76,7 +76,7 @@ namespace ServerGameCode.Services
             _resourceService = new ResourceService(_die, _rndGenerator);
             _leaderService = new LeaderService();
             _playerService = new PlayerService(_resourceService, _leaderService);
-            _gameRoomService = new GameRoomService(currentTurnDb.GetObject("Match"), dbObject.GetObject("PlayerActionLog"), Server, roomId, _playerService, roomData);
+            _gameRoomService = new GameRoomService(currentTurnDb.GetObject("Marketplace"), dbObject.GetObject("PlayerActionLog"), Server, roomId, _playerService, roomData);
             _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService);
         }
     }

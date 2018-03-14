@@ -1,19 +1,42 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
 using ServerClientShare.Enums;
+using ServerClientShare.Interfaces;
+using ServerClientShare.PeristenceMessages;
 using ServerGameCode.ExtensionMethods;
 using ServerGameCode.Interfaces;
+using ServerGameCode.NetworkMessageHandler;
 
 namespace ServerGameCode.Services
 {
     public class NetworkMessageService : IServerAspect
     {
         private ServerCode _server;
+
+        private static readonly Dictionary<NetworkMessageType, INetworkMessageHandler> _networkMessageHandler = new Dictionary<NetworkMessageType, INetworkMessageHandler>()
+        {
+            { NetworkMessageType.ClientSentMatch, new ClientSentUpdateMatchHandler() },
+            { NetworkMessageType.ClientSentHexMap, new ClientSentUpdateHexMapHandler() },
+            { NetworkMessageType.ClientSentMarketplace, new ClientSentUpdateMarketplaceHandler() },
+            { NetworkMessageType.ClientSentDeck, new ClientSentUpdateDeckHandler() },
+            { NetworkMessageType.ClientSentChangeTurn, new ClientSentChangeTurnHandler() },
+            { NetworkMessageType.ClientSentActionLogIndex, new ClientSentUpdateActionLogIndexHandler() },
+            { NetworkMessageType.GameActionPerformed, new ClientSentActionHandler() },
+
+            { NetworkMessageType.RequestInitialGameplayData, new ClientRequestInitialGameplayDataHandler() },
+            { NetworkMessageType.RequestHexMap, new ClientRequestHexMapHandler()},
+            { NetworkMessageType.RequestDeck, new ClientRequestDeckHandler() },
+            { NetworkMessageType.RequestMarketplace,  new ClientRequestMarketplaceHandler()},
+            { NetworkMessageType.RequestActionLog, new ClientRequestActionLogHandler()},
+            { NetworkMessageType.RequestNewTowerSegment, new ClientRequestNewTowerSegmentHandler()},
+
+        }; 
 
         public ServerCode Server { get { return _server; }}
 
@@ -27,139 +50,12 @@ namespace ServerGameCode.Services
             NetworkMessageType messageType;
             var parseSuccessful = Enum.TryParse(message.Type, out messageType);
 
-            Console.WriteLine("Received Message!");
-            Console.WriteLine("Message type:" + messageType);
+            Console.WriteLine("Received message of type:" + messageType);
             if (parseSuccessful)
             {
-                var playerSenderDto = this.GameRoomService().MatchDTO.Players.Where(p => p.PlayerName == playerSender.ConnectUserId);
-                Message answer;
-                uint offset = 0;
-                int turnNumber = 0;
-
-                switch (messageType)
+                if (_networkMessageHandler.ContainsKey(messageType))
                 {
-                    /*case "Command":
-                        BroadcastCommandMessage(player, message);
-                        break;
-                    */
-                    case NetworkMessageType.RequestInitialGameplayData:
-                        Console.WriteLine("Received Gameplay Data Request");
-                        this.PersistenceService().GenerateInitialGameplayDataDTO(playerSender, (initialDataDto) =>
-                        {
-                            answer = Message.Create(NetworkMessageType.ServerSentInitialGameplayData.ToString("G"));
-                            answer = initialDataDto.ToMessage(answer);
-
-                            Console.WriteLine("Answering Gameplay Data Request");
-                            playerSender.Send(answer);
-                        });
-                        break;
-                    case NetworkMessageType.RequestDeck:
-                        var deck = this.DeckService().Deck;
-                        answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
-                        answer = deck.ToMessage(answer);
-
-                        playerSender.Send(answer);
-                        break;
-                    case NetworkMessageType.RequestMarketplace:
-                        var marketplace = this.DeckService().Marketplace;
-                        answer = Message.Create(NetworkMessageType.ServerSentMarketplace.ToString("G"));
-                        answer = marketplace.ToMessage(answer);
-                        playerSender.Send(answer);
-                        break;
-                    case NetworkMessageType.RequestHexMap:
-                        var map = this.HexMapService().CurrentHexMapDto;
-                        answer = Message.Create(NetworkMessageType.ServerSentHexMap.ToString("G"));
-                        answer = map.ToMessage(answer);
-
-                        playerSender.Send(answer);
-                        break;
-                    case NetworkMessageType.RequestActionLog:
-                        answer = Message.Create(NetworkMessageType.ServerSentDeck.ToString("G"));
-                        answer = this.GameRoomService().PlayerActionLog.DTO.ToMessage(answer);
-
-                        playerSender.Send(answer);
-                        break;
-                    case NetworkMessageType.GameActionPerformed:
-                        Console.WriteLine("Received Network Action");
-
-                        this.PersistenceService().AddActionToActionLog(message);
-                        //this.GameRoomService().PlayerActionLog.AddPlayerAction(message);
-
-                        answer = Message.Create(NetworkMessageType.ServerSentGameAction.ToString("G"));
-                        answer.Add(message.GetString(0));
-                        answer.Add(message.GetString(1));
-                        answer.Add(message.GetString(2));
-
-                        foreach (var player in _server.Players) {
-                            if (player != playerSender)
-                            {
-                                player.Send(answer);
-                            }
-                        }
-                        break;
-                   
-                    case NetworkMessageType.RequestNewTowerSegment:
-                        answer = Message.Create(NetworkMessageType.ServerSentNewTowerSegment.ToString("G"));
-                        answer = this.ResourceService()
-                            .GenerateNewTowerSegment()
-                            .ToMessage(answer);
-                        playerSender.Send(answer);
-                        break;
-                    case NetworkMessageType.ClientSentHexMap:
-                        turnNumber = message.GetInt(offset++);
-                        var hexMapDto = HexMapDTO.FromMessageArguments(message, ref offset);
-                        this.HexMapService().UpdateHexMap(hexMapDto);
-                        this.PersistenceService().UpdateTurnData(turnNumber);
-                        this.DatabaseService().WriteHexMapToDb(this.GameRoomService().MatchDTO.TurnNumber);
-                        break;
-                    case NetworkMessageType.ClientSentMatch:
-                        turnNumber = message.GetInt(offset++);
-                        var matchDto = MatchDTO.FromMessageArguments(message, ref offset);
-                        this.GameRoomService().UpdateMatch(playerSender, matchDto);
-                        this.PersistenceService().UpdateTurnData(turnNumber);
-                        Console.WriteLine("WRITE MATCH TO DB with turn number:" + this.GameRoomService().MatchDTO.TurnNumber);
-                        this.DatabaseService().WriteMatchToDb(this.GameRoomService().MatchDTO.TurnNumber);
-                        break;
-                    case NetworkMessageType.ClientSentMarketplace:
-                        turnNumber = message.GetInt(offset++);
-                        var marketplaceDto = DeckDTO.FromMessageArguments(message, ref offset);
-                        this.DeckService().UpdateMarketplace(marketplaceDto);
-                        this.PersistenceService().UpdateTurnData(turnNumber);
-                        this.DatabaseService().WriteMarketplaceToDb(this.GameRoomService().MatchDTO.TurnNumber);
-                        break;
-                    case NetworkMessageType.ClientSentDeck:
-                        turnNumber = message.GetInt(offset++);
-                        var deckDto = DeckDTO.FromMessageArguments(message, ref offset);
-                        this.DeckService().UpdateDeck(deckDto);
-                        this.PersistenceService().UpdateTurnData(turnNumber);
-                        this.DatabaseService().WriteDeckToDb(this.GameRoomService().MatchDTO.TurnNumber);
-                        break;
-                    case NetworkMessageType.ClientSentActionLogIndex:
-                        var actionLogIndex = message.GetInt(0);
-                        this.GameRoomService().UpdateActionLogIndex(playerSender, actionLogIndex);
-                        this.PersistenceService().UpdateTurnData();
-                        //this.DatabaseService().WriteMatchToDb();
-                        break;
-                    case NetworkMessageType.ClientSentChangeTurn:
-                        Console.WriteLine("Client " + playerSender.ConnectUserId +" sent change turn:" + message.GetInt(0));
-                        this.GameRoomService().UpdatePlayerTurnNumber(playerSender, message.GetInt(0));
-
-                        turnNumber = message.GetInt(offset++) + 1;
-                        var nextPlayerIndex = message.GetInt(offset++);
-                        this.PersistenceService().AddInitialTurnData(turnNumber, nextPlayerIndex); //TODO intial turn data is wrong (currently from the end of the turn before)
-                        //this.PersistenceService().AddTurnData(message.GetInt(0));
-                        //this.DatabaseService().WriteInitialTurnDataToDb(this.GameRoomService().MatchDTO.TurnNumber);
-
-                        answer = Message.Create(NetworkMessageType.ServerSentChangeTurn.ToString("G"));
-
-                        foreach (var player in _server.Players)
-                        {
-                            if (player != playerSender)
-                            {
-                                player.Send(answer);
-                            }
-                        }
-                        break;
+                    _networkMessageHandler[messageType].HandleMessage(playerSender, message, _server.ServiceContainer);
                 }
             }
             else
@@ -183,6 +79,17 @@ namespace ServerGameCode.Services
             _server.Broadcast(message);
         }
 
+        public void SendMessageConfirmedToPlayer(Player receiver, string confirmedMessageId)
+        {
+            var message = new ServerConfirmedClientMessage(confirmedMessageId).ToMessage();
+            receiver.Send(message);
+        }
+
+        public void SendMessageToPlayer(Player receiver, IServerPersistenceMessage message)
+        {
+            receiver.Send(message.ToMessage());
+        }
+
         public void SendRoomCreatedMessage()
         {
             foreach (var player in this.GameRoomService().Players)
@@ -196,10 +103,6 @@ namespace ServerGameCode.Services
                     player.Send(answer);
                 });
             }
-            /*Console.WriteLine("Broadcast Room Created");
-            Message message = Message.Create("RoomCreated");
-            message = this.GameRoomService().MatchDTO.ToMessage(message);
-            _server.Broadcast(message);*/
         }
 
         public void BroadcastPlayerListMessage()

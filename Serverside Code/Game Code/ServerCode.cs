@@ -131,7 +131,7 @@ namespace ServerGameCode
                     var gameSession = new DatabaseObject();
                     gameSession.Set("GameId", RoomId);
                     gameSession.Set("GameStartedState", _serviceContainer.GameRoomService.GameStartedState.ToString("G"));
-                    gameSession.Set("Match", _serviceContainer.GameRoomService.MatchDTO.ToDBObject());
+                    gameSession.Set("Marketplace", _serviceContainer.GameRoomService.MatchDTO.ToDBObject());
                     var gameSessionsArray = new DatabaseArray();
                     gameSessionsArray.Add(gameSession);
                     player.PlayerObject.Set("GameSessions", gameSessionsArray);
