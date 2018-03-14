@@ -26,6 +26,7 @@ namespace ServerGameCode.Services
         private readonly ResourceService _resourceService;
         private readonly PlayerService _playerService;
         private readonly DatabaseService _databaseService;
+        private readonly PersistenceService _persistenceService;
         private readonly LeaderService _leaderService;
 
         public ServerClientShare.Helper.RandomGenerator RandomGenerator => _rndGenerator;
@@ -38,6 +39,7 @@ namespace ServerGameCode.Services
         public ResourceService ResourceService => _resourceService;
         public PlayerService PlayerService => _playerService;
         public DatabaseService DatabaseService => _databaseService;
+        public PersistenceService PersistenceService => _persistenceService;
         public LeaderService LeaderService => _leaderService;
         public ServerCode Server { get { return _server; } }
 
@@ -55,6 +57,7 @@ namespace ServerGameCode.Services
             _leaderService = new LeaderService();
             _playerService = new PlayerService(_resourceService, _leaderService);
             _gameRoomService = new GameRoomService(Server, roomId, _playerService, roomData);
+            _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService);
         }
 
         public ServiceContainer(DatabaseObject dbObject, ServerCode server, string roomId, RoomData roomData)
@@ -74,6 +77,7 @@ namespace ServerGameCode.Services
             _leaderService = new LeaderService();
             _playerService = new PlayerService(_resourceService, _leaderService);
             _gameRoomService = new GameRoomService(currentTurnDb.GetObject("Match"), dbObject.GetObject("PlayerActionLog"), Server, roomId, _playerService, roomData);
+            _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService);
         }
     }
 }

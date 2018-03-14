@@ -38,9 +38,9 @@ namespace ServerGameCode
             set => _matchDto.CurrentPlayerIndex = _matchDto.Players.TakeWhile(p => p.PlayerName != value.PlayerName).Count();
         }
         public IEnumerable<Player> Players => _server?.Players;
-        public int RequiredRoomSize =>  _requiredRoomSize;
+        public int RequiredRoomSize => _requiredRoomSize;
         public PlayerActionsLog PlayerActionLog => _actionLog;
-        
+
 
         public GameRoomService(ServerCode server, string gameId, PlayerService playerService, RoomData roomData = null)
         {
@@ -54,7 +54,7 @@ namespace ServerGameCode
             _playerService = playerService;
         }
 
-        public GameRoomService(DatabaseObject dbObjectMatch, DatabaseObject dbObjectActionLog, ServerCode server, 
+        public GameRoomService(DatabaseObject dbObjectMatch, DatabaseObject dbObjectActionLog, ServerCode server,
             string gameId, PlayerService playerService, RoomData roomData = null) : this(server, gameId, playerService, roomData)
         {
             _matchDto = MatchDTO.FromDBObject(dbObjectMatch);
@@ -76,7 +76,7 @@ namespace ServerGameCode
 
         public void AddPlayer(Player player)
         {
-            var leaderType = (LeaderType) Enum.Parse(typeof(LeaderType), player.JoinData["LeaderType"]);
+            var leaderType = (LeaderType)Enum.Parse(typeof(LeaderType), player.JoinData["LeaderType"]);
             var playerDto = _playerService.GenerateInitialPlayer(player.ConnectUserId, _matchDto.Players.Count, leaderType);
             _matchDto.AddPlayer(playerDto);
         }
@@ -107,7 +107,10 @@ namespace ServerGameCode
             initialPersistenceData.Set("HexMap", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
             initialPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
             initialPersistenceData.Set("Deck", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-            dbObject.Set("InitialData", initialPersistenceData);
+            dbObject.Set("InitialTurns", new DatabaseArray()
+            {
+                initialPersistenceData
+            });
 
             DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
             dbGameplayPersistenceData.Set("Match", _matchDto.ToDBObject());
@@ -144,15 +147,17 @@ namespace ServerGameCode
             });
         }
 
-        public void UpdateMatch(MatchDTO dto)
+        public void UpdateMatch(Player playerSender, MatchDTO dto)
         {
-            //keep the old playerDtos ActionLogIndex, it should only be updated through messages
+            //keep the old playerDtos ActionLogIndex and TurnNumber, it should only be updated through messages
             foreach (var playerDto in _matchDto.Players)
             {
                 var player = dto.Players.SingleOrDefault(p => p.PlayerName == playerDto.PlayerName);
                 if (player != null)
                 {
                     player.CurrentActionLogIndex = playerDto.CurrentActionLogIndex;
+                    player.CurrentTurn = playerDto.CurrentTurn;
+
                     dto.RemovePlayer(playerDto.PlayerName);
                     dto.AddPlayer(player);
                 }
@@ -166,6 +171,15 @@ namespace ServerGameCode
             if (playerDto != null)
             {
                 playerDto.CurrentActionLogIndex = index;
+            }
+        }
+
+        public void UpdatePlayerTurnNumber(Player player, int turnNumber)
+        {
+            var playerDto = MatchDTO.Players.SingleOrDefault(p => p.PlayerName == player.ConnectUserId);
+            if (playerDto != null)
+            {
+                playerDto.CurrentTurn = turnNumber;
             }
         }
 

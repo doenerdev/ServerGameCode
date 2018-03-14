@@ -45,5 +45,10 @@ namespace ServerGameCode.ExtensionMethods
         {
             return aspect.Server.ServiceContainer.GameRoomService;
         }
+
+        public static PersistenceService PersistenceService(this IServerAspect aspect)
+        {
+            return aspect.Server.ServiceContainer.PersistenceService;
+        }
     }
 }
