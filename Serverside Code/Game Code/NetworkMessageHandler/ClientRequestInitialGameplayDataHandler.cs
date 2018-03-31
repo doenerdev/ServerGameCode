@@ -18,16 +18,17 @@ namespace ServerGameCode.NetworkMessageHandler
             uint offset = 0;
             var messageDto = DatalessClientMessage.FromMessageArguments(message, ref offset);
             serviceContainer.NetworkMessageService.SendMessageConfirmedToPlayer(sender, messageDto.Id);
-
+            sender.RequestedInitialData = true;
             Console.WriteLine("Received Gameplay Data Request");
-            serviceContainer.PersistenceService.GenerateInitialGameplayDataDTO(sender, (initialDataDto) =>
+            /*serviceContainer.PersistenceService.GenerateInitialGameplayDataDTO(sender, (initialDataDto) =>
             {
+                Console.WriteLine("Initial Hex Map Cells:" + initialDataDto.HexMap.Cells.Count);
                 Message answer = Message.Create(NetworkMessageType.ServerSentInitialGameplayData.ToString("G"));
                 answer = initialDataDto.ToMessage(answer);
 
                 Console.WriteLine("Answering Gameplay Data Request");
                 sender.Send(answer);
-            });
+            });*/
         }
     }
 }

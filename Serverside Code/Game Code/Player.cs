@@ -15,6 +15,10 @@ namespace ServerGameCode
 {
     public class Player : BasePlayer
     {
+        public bool RequestedInitialData = false;
+        public bool ReceivedInitialData = false;
+        public bool IsReadyForInitialData = false;
+
         public Player() : base()
         {
             

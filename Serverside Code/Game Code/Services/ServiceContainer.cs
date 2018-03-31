@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -50,34 +51,35 @@ namespace ServerGameCode.Services
             _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
             _die = new ServerClientShare.Helper.Die(_rndGenerator);
             _hexCellService = new HexCellService(_die, _rndGenerator);
-            _hexMapService = new HexMapService(_hexCellService, HexMapSize.M);
-            _deckService = new DeckService(_rndGenerator);
             _networkMessageService = new NetworkMessageService(Server);
             _resourceService = new ResourceService(_die, _rndGenerator);
             _leaderService = new LeaderService();
             _playerService = new PlayerService(_resourceService, _leaderService);
+            _deckService = new DeckService(_rndGenerator);
             _gameRoomService = new GameRoomService(Server, roomId, _playerService, roomData);
-            _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService);
+            _hexMapService = new HexMapService(_hexCellService, _gameRoomService.RequiredRoomSize);
+            _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService, _playerService);
         }
 
         public ServiceContainer(DatabaseObject dbObject, ServerCode server, string roomId, RoomData roomData)
         {
             DatabaseArray turns = dbObject.GetArray("Turns");
-            var currentTurnDb = (DatabaseObject)dbObject.GetArray("Turns")[turns.Count - 1];
+            var currentTurnDb = turns.GetObject(turns.Count-1);
 
             _server = server;
             _databaseService = new DatabaseService(server);
             _rndGenerator = new ServerClientShare.Helper.RandomGenerator();
             _die = new ServerClientShare.Helper.Die(_rndGenerator);
             _hexCellService = new HexCellService(_die, _rndGenerator);
-            _hexMapService = new HexMapService(currentTurnDb, _hexCellService, HexMapSize.M);
             _deckService = new DeckService(currentTurnDb, _rndGenerator);
             _networkMessageService = new NetworkMessageService(Server);
             _resourceService = new ResourceService(_die, _rndGenerator);
             _leaderService = new LeaderService();
             _playerService = new PlayerService(_resourceService, _leaderService);
-            _gameRoomService = new GameRoomService(currentTurnDb.GetObject("Marketplace"), dbObject.GetObject("PlayerActionLog"), Server, roomId, _playerService, roomData);
-            _persistenceService = new PersistenceService(server, _gameRoomService, _hexMapService, _deckService);
+            Console.WriteLine("GameRoomSrvice");
+            _gameRoomService = new GameRoomService(currentTurnDb.GetObject("Match"), dbObject.GetObject("PlayerActionLog"), Server, roomId, _playerService, roomData);
+            _hexMapService = new HexMapService(currentTurnDb, _hexCellService, _gameRoomService.RequiredRoomSize);
+            _persistenceService = new PersistenceService(dbObject, server, _gameRoomService, _hexMapService, _deckService, _playerService);
         }
     }
 }

@@ -79,72 +79,8 @@ namespace ServerGameCode
             var leaderType = (LeaderType)Enum.Parse(typeof(LeaderType), player.JoinData["LeaderType"]);
             var playerDto = _playerService.GenerateInitialPlayer(player.ConnectUserId, _matchDto.Players.Count, leaderType);
             _matchDto.AddPlayer(playerDto);
-        }
-
-        public void RemovePlayer(Player player)
-        {
-            _matchDto.RemovePlayer(player.ConnectUserId);
-        }
-
-        private DatabaseObject GenerateInitialDBObject()
-        {
-            DatabaseObject dbObject = new DatabaseObject();
-            dbObject.Set("GameId", _server.RoomId);
-            dbObject.Set("GameStartedState", GameStartedState.ToString("G"));
-            dbObject.Set("CurrentPlayerName", CurrentPlayer.PlayerName);
-            dbObject.Set("RequiredRoomSize", _requiredRoomSize);
-
-            DatabaseArray dbPlayerIds = new DatabaseArray();
-            foreach (var playerId in _matchDto.Players.Select(p => p.PlayerName))
-            {
-                dbPlayerIds.Add(playerId);
-            }
-            dbObject.Set("PlayerIds", dbPlayerIds);
-            dbObject.Set("PlayerActionLog", _actionLog.ToDBObject());
-
-            DatabaseObject initialPersistenceData = new DatabaseObject();
-            initialPersistenceData.Set("Marketplace", _matchDto.ToDBObject());
-            initialPersistenceData.Set("Marketplace", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
-            initialPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-            initialPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-            dbObject.Set("InitialTurns", new DatabaseArray()
-            {
-                initialPersistenceData
-            });
-
-            DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-            dbGameplayPersistenceData.Set("Marketplace", _matchDto.ToDBObject());
-            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
-            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-            dbGameplayPersistenceData.Set("Marketplace", _server.ServiceContainer.DeckService.Deck.ToDBObject());
-            dbObject.Set("Turns", new DatabaseArray()
-            {
-                dbGameplayPersistenceData
-            });
-
-            return dbObject;
-        }
-
-        public void WriteInitialDataToDb(BigDB dbClient, Action successCallback)
-        {
-            dbClient.DeleteRange("GameSessions", "ByRequiredRoomSize", null, 0, 3, () =>
-            {
-                DatabaseObject dbObject = GenerateInitialDBObject();
-                dbClient.CreateObject(
-                    "GameSessions",
-                    _server.RoomId,
-                    dbObject,
-                    successCallback: receivedDbObject =>
-                    {
-                        successCallback();
-                        Console.WriteLine("Sucessfully wrote Server Room Info to DB");
-                    },
-                    errorCallback: error =>
-                    {
-                        Console.WriteLine("An error occured while trying to write Server Room Info to DB");
-                    }
-                );
-            });
+            //_server.ServiceContainer.PersistenceService.UpdateGameSessionBaseData();
+            Console.WriteLine("ADDED PLAYER TO DTO");
         }
 
         public void UpdateMatch(Player playerSender, MatchDTO dto)
@@ -183,68 +119,5 @@ namespace ServerGameCode
             }
         }
 
-        public void GenerateInitialGameplayDataDTO(Player player, Action<InitialGameplayDataDTO> successCallback)
-        {
-            var playerDto = MatchDTO.Players.SingleOrDefault(p => p.PlayerName == player.ConnectUserId);
-            Console.WriteLine(playerDto);
-            if (playerDto == null) return;
-
-            _server.PlayerIO.BigDB.Load(
-                "GameSessions",
-                _server.RoomId,
-                successCallback: receivedDbObject =>
-                {
-                    if (MatchDTO.TurnNumber == 0)
-                    {
-                        _server.IsNewGame(newGame =>
-                        {
-                            InitialGameplayDataDTO dto;
-                            if (newGame)
-                            {
-                                Console.WriteLine("INITIAL: IS NEW GAME");
-                                dto = new InitialGameplayDataDTO()
-                                {
-                                    Match = MatchDTO,
-                                    HexMap = _server.ServiceContainer.HexMapService.CurrentHexMapDto,
-                                    Marketplace = _server.ServiceContainer.DeckService.Marketplace,
-                                    Deck = _server.ServiceContainer.DeckService.Deck,
-                                    ActionLog = _actionLog.DTO
-                                };
-                            }
-                            else
-                            {
-                                Console.WriteLine("INITIAL: IS CONTINUED GAME");
-                                dto = InitialGameplayDataDTO.FromDBObject(receivedDbObject.GetObject("InitialData"));
-                                dto.ActionLog = PlayerActionsLogDTO.FromDBObject(receivedDbObject.GetObject("PlayerActionLog"));
-                                Console.WriteLine("Retrieved Initial Gameplay Data for Turn:" + (playerDto.CurrentTurn > 0 ? playerDto.CurrentTurn - 1 : 0));
-                            }
-                            successCallback(dto);
-                        });
-                    }
-                    else
-                    {
-                        InitialGameplayDataDTO dto;
-                        DatabaseArray turns = receivedDbObject.GetArray("Turns");
-
-                        if (playerDto.CurrentTurn < MatchDTO.TurnNumber)
-                        {
-                            dto = InitialGameplayDataDTO.FromDBObject(turns.GetObject(playerDto.CurrentTurn > 0 ? playerDto.CurrentTurn - 1 : 0));
-                        }
-                        else
-                        {
-                            dto = InitialGameplayDataDTO.FromDBObject(turns.GetObject(playerDto.CurrentTurn));
-                        }
-                        dto.ActionLog = PlayerActionsLogDTO.FromDBObject(receivedDbObject.GetObject("PlayerActionLog"));
-
-                        Console.WriteLine("Retrieved Initial Gameplay Data for Turn:" + (playerDto.CurrentTurn > 0 ? playerDto.CurrentTurn - 1 : 0));
-                        successCallback(dto);
-                    }
-                },
-                errorCallback: error =>
-                {
-                    Console.WriteLine("An error occured while trying to write Active Player to DB");
-                }
-            );
-        }
     }
 }

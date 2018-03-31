@@ -20,8 +20,9 @@ namespace ServerGameCode
     public class ServerCode : Game<Player>
     {
         private ServiceContainer _serviceContainer;
+        private bool _readyForGameplay = false;
+        private bool _continuedGameWaitingForInit = false;
 
-        private bool _gameplayStarted = false;
 
         public ServiceContainer ServiceContainer
         {
@@ -40,6 +41,7 @@ namespace ServerGameCode
         {
             Console.WriteLine("Server has started: " + RoomId);
             PreloadPlayerObjects = true;
+            AddTimer(Update, 500);
 
             //if this is a continued server, skip waiting for opponents and start right away
             IsNewGame((newGame) =>
@@ -55,8 +57,34 @@ namespace ServerGameCode
             });
         }
 
+        public void Update()
+        {
+            if (_continuedGameWaitingForInit && _readyForGameplay)
+            {
+                StartContinuedGameplay();
+            }
+
+            foreach (var player in Players)
+            {
+                if (player.RequestedInitialData 
+                    && player.ReceivedInitialData == false
+                    && _readyForGameplay)
+                {
+                    ServiceContainer.PersistenceService.GenerateInitialGameplayDataDTO(player, (initialDataDto) =>
+                    {
+                        Message answer = Message.Create(NetworkMessageType.ServerSentInitialGameplayData.ToString("G"));
+                        answer = initialDataDto.ToMessage(answer);
+
+                        Console.WriteLine("Answering Gameplay Data Request");
+                        player.Send(answer);
+                    });
+                }
+            }
+        }
+
         private void InitializeNewGame()
         {
+            _readyForGameplay = true;
             Console.WriteLine("Initializing new server");
         }
 
@@ -73,8 +101,11 @@ namespace ServerGameCode
                     RoomData["GameSessionId"],
                     successCallback: gameRoomInfoDb =>
                     {
-                        _serviceContainer = new ServiceContainer(gameRoomInfoDb, this, this.RoomId, RoomData);
                         Console.WriteLine("Fetched game sesson info from db");
+   
+                        _serviceContainer = new ServiceContainer(gameRoomInfoDb, this, this.RoomId, RoomData);
+                        _readyForGameplay = true;
+              
                     },
                     errorCallback: error =>
                     {
@@ -147,23 +178,26 @@ namespace ServerGameCode
 
             Console.WriteLine("Gameplay started");
             SetGameRoomInfoPlayers();
+            ServiceContainer.PersistenceService.Initialize();
+            ServiceContainer.PersistenceService.UpdateGameSessionBaseData();
             ServiceContainer.GameRoomService.GameStartedState = GameStartedState.Started;
-            ServiceContainer.GameRoomService.WriteInitialDataToDb(PlayerIO.BigDB, () =>
-            {
-                ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
-                ServiceContainer.NetworkMessageService.SendRoomCreatedMessage();
-            }); //TODO add again later
-
-            _gameplayStarted = true;
+            ServiceContainer.DatabaseService.WriteInitialPersistenceDataToDb(ServiceContainer.PersistenceService.PersistenceData,
+                successCallback: () =>
+                {
+                    ServiceContainer.NetworkMessageService.BroadcastPlayerListMessage();
+                    ServiceContainer.NetworkMessageService.SendRoomCreatedMessage();
+                },
+                errorCallback: () => { }
+            );
         }
 
         private void StartContinuedGameplay()
         {
             Console.WriteLine("Gameplay started");
+           // ServiceContainer.PersistenceService.Initialize(true);
+
             SetGameRoomInfoPlayers();
             ServiceContainer.NetworkMessageService.SendRoomCreatedMessage();
-
-            _gameplayStarted = true;
         }
 
         public override bool AllowUserJoin(Player player)
@@ -191,7 +225,6 @@ namespace ServerGameCode
                     pl.Send("PlayerJoined", player.ConnectUserId);
                 }
             }
-
             IsNewGame((newGame) =>
             {
                 if (newGame)
@@ -208,7 +241,8 @@ namespace ServerGameCode
                 {
                     Console.WriteLine("CONTINUED GAME!!!!!!!!!");
                     HideFromMatchmaking();
-                    StartContinuedGameplay();
+                    _continuedGameWaitingForInit = true;
+                    // StartContinuedGameplay();
                 }
             });
         }
@@ -223,11 +257,6 @@ namespace ServerGameCode
         public bool IsPlayerOnline(string playerId)
         {
             return Players.FirstOrDefault(p => p.ConnectUserId == playerId) != null;
-        }
-
-        public bool IsAsynchronous()
-        {
-            return ServiceContainer.GameRoomService?.RequiredRoomSize == PlayerCount;
         }
 
         public void HideFromMatchmaking()
@@ -246,13 +275,6 @@ namespace ServerGameCode
         {
             return Players?.SingleOrDefault(p => p.ConnectUserId == playerName);
         }
-    }
-
-    public enum GameStartedState
-    {
-        Pending,
-        Started,
-        Ended
     }
 
     public interface IMessageSerializable

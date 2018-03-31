@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
 using ServerClientShare.Models;
-using ServerGameCode.DTO;
 using ServerGameCode.ExtensionMethods;
 using ServerGameCode.Interfaces;
 
@@ -98,7 +97,8 @@ namespace ServerGameCode.Services
 
         public void WriteInitialPersistenceDataToDb(GameSessionsPersistenceDataDTO dataDto, Action successCallback, Action errorCallback)
         {
-            Server.PlayerIO.BigDB.DeleteRange("GameSessions", "ByRequiredRoomSize", null, 0, 3, () =>
+            var currentTimeStamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            Server.PlayerIO.BigDB.DeleteRange("GameSessions", "ByTimeCreated", null, (currentTimeStamp - 10), null, () =>
             {
                 Server.PlayerIO.BigDB.CreateObject(
                     "GameSessions",
@@ -118,16 +118,40 @@ namespace ServerGameCode.Services
             });
         }
 
-        public void WriteGameSessionMetaDataToDb(GameSessionMetaDataDTO data, Action successCallback, Action errorCallback)
+        public void WritePersistenceDataToDb(GameSessionsPersistenceDataDTO dataDto, Action successCallback, Action errorCallback)
         {
             Server.PlayerIO.BigDB.DeleteRange("GameSessions", "ByRequiredRoomSize", null, 0, 3, () =>
             {
-                Server.PlayerIO.BigDB.CreateObject(
-                    "GameSessionMetaData",
-                    data.GameId,
-                    data.ToDBObject(),
+                Server.PlayerIO.BigDB.LoadOrCreate(
+                    "GameSessions",
+                    dataDto.GameId,
                     successCallback: receivedDbObject =>
                     {
+                        receivedDbObject.Set(dataDto.GameId, dataDto.ToDBObject());
+                        receivedDbObject.Save();
+                        Console.WriteLine("Sucessfully wrote Server Room Info to DB");
+                        successCallback();
+                    },
+                    errorCallback: error =>
+                    {
+                        Console.WriteLine("An error occured while trying to write Server Room Info to DB");
+                        errorCallback();
+                    }
+                );
+            });
+        }
+
+        public void WriteGameSessionMetaDataToDb(GameSessionMetaDataDTO dataDto, Action successCallback, Action errorCallback)
+        {
+            Server.PlayerIO.BigDB.DeleteRange("GameSessions", "ByRequiredRoomSize", null, 0, 3, () =>
+            {
+                Server.PlayerIO.BigDB.LoadOrCreate(
+                    "GameSessionMetaData",
+                    dataDto.GameId,
+                    successCallback: receivedDbObject =>
+                    {
+                        receivedDbObject.Set(dataDto.GameId, dataDto.ToDBObject());
+                        receivedDbObject.Save();
                         Console.WriteLine("Sucessfully wrote Server Room Info to DB");
                         successCallback();
                     },
@@ -147,15 +171,6 @@ namespace ServerGameCode.Services
             WriteHexMapToDb(turnNumber, true);
             WriteMarketplaceToDb(turnNumber, true);
             WriteDeckToDb(turnNumber, true);
-        }
-
-        public void WriteTurnDataToDb(int turnNumber)
-        {
-            WriteActionLogToDb(this.GameRoomService().PlayerActionLog);
-            WriteMatchToDb(turnNumber);
-            WriteHexMapToDb(turnNumber);
-            WriteMarketplaceToDb(turnNumber);
-            WriteDeckToDb(turnNumber);
         }
 
         public void WriteActionLogToDb(PlayerActionsLog log)
@@ -202,17 +217,17 @@ namespace ServerGameCode.Services
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
-                            "Marketplace",
+                            "Match",
                             matchData
                         );
                     }
                     else
                     {
                         DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+                        dbGameplayPersistenceData.Set("Match", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
+                        dbGameplayPersistenceData.Set("HexMap", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
                         dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Deck.ToDBObject());
+                        dbGameplayPersistenceData.Set("Deck", Server.ServiceContainer.DeckService.Deck.ToDBObject());
                         dbGameplayPersistenceData.Set("PlayerActionLog", Server.ServiceContainer.GameRoomService.PlayerActionLog.ToDBObject());
                         turns.Add(dbGameplayPersistenceData);
                     }
@@ -234,8 +249,8 @@ namespace ServerGameCode.Services
                 : "Turns";
 
             var hexMapData = initialTurnData
-                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].Match.ToDBObject()
-                : this.PersistenceService().PersistenceData.Turns[turnNumber].Match.ToDBObject();
+                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].HexMap.ToDBObject()
+                : this.PersistenceService().PersistenceData.Turns[turnNumber].HexMap.ToDBObject();
 
             Server.PlayerIO.BigDB.Load(
                 "GameSessions",
@@ -249,17 +264,17 @@ namespace ServerGameCode.Services
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
-                            "Marketplace",
+                            "HexMap",
                             hexMapData
                         );
                     }
                     else
                     {
                         DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+                        dbGameplayPersistenceData.Set("Match", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
+                        dbGameplayPersistenceData.Set("HexMap", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
                         dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Deck.ToDBObject());
+                        dbGameplayPersistenceData.Set("Deck", Server.ServiceContainer.DeckService.Deck.ToDBObject());
                         dbGameplayPersistenceData.Set("PlayerActionLog", Server.ServiceContainer.GameRoomService.PlayerActionLog.ToDBObject());
                         turns.Add(dbGameplayPersistenceData);
                     }
@@ -281,8 +296,8 @@ namespace ServerGameCode.Services
                 : "Turns";
 
             var marketplaceData = initialTurnData
-                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].Match.ToDBObject()
-                : this.PersistenceService().PersistenceData.Turns[turnNumber].Match.ToDBObject();
+                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].Marketplace.ToDBObject()
+                : this.PersistenceService().PersistenceData.Turns[turnNumber].Marketplace.ToDBObject();
 
             Server.PlayerIO.BigDB.Load(
                 "GameSessions",
@@ -303,10 +318,10 @@ namespace ServerGameCode.Services
                     else
                     {
                         DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+                        dbGameplayPersistenceData.Set("Match", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
+                        dbGameplayPersistenceData.Set("HexMap", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
                         dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Deck.ToDBObject());
+                        dbGameplayPersistenceData.Set("Deck", Server.ServiceContainer.DeckService.Deck.ToDBObject());
                         dbGameplayPersistenceData.Set("PlayerActionLog", Server.ServiceContainer.GameRoomService.PlayerActionLog.ToDBObject());
                         turns.Add(dbGameplayPersistenceData);
                     }
@@ -328,8 +343,8 @@ namespace ServerGameCode.Services
                 : "Turns";
 
             var deckData = initialTurnData
-                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].Match.ToDBObject()
-                : this.PersistenceService().PersistenceData.Turns[turnNumber].Match.ToDBObject();
+                ? this.PersistenceService().PersistenceData.InitialTurns[turnNumber].Deck.ToDBObject()
+                : this.PersistenceService().PersistenceData.Turns[turnNumber].Deck.ToDBObject();
 
             Server.PlayerIO.BigDB.Load(
                 "GameSessions",
@@ -343,17 +358,17 @@ namespace ServerGameCode.Services
                     {
                         DatabaseObject dbGameplayPersistenceData = turns.GetObject(turnNumber);
                         dbGameplayPersistenceData.Set(
-                            "Marketplace",
+                            "Deck",
                             deckData
                         );
                     }
                     else
                     {
                         DatabaseObject dbGameplayPersistenceData = new DatabaseObject();
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
+                        dbGameplayPersistenceData.Set("Match", Server.ServiceContainer.GameRoomService.MatchDTO.ToDBObject());
+                        dbGameplayPersistenceData.Set("HexMap", Server.ServiceContainer.HexMapService.CurrentHexMapDto.ToDBObject());
                         dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Marketplace.ToDBObject());
-                        dbGameplayPersistenceData.Set("Marketplace", Server.ServiceContainer.DeckService.Deck.ToDBObject());
+                        dbGameplayPersistenceData.Set("Deck", Server.ServiceContainer.DeckService.Deck.ToDBObject());
                         dbGameplayPersistenceData.Set("PlayerActionLog", Server.ServiceContainer.GameRoomService.PlayerActionLog.ToDBObject());
                         turns.Add(dbGameplayPersistenceData);
                     }

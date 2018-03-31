@@ -5,10 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 using PlayerIO.GameLibrary;
 using ServerClientShare.DTO;
+using ServerClientShare.Enums;
 using ServerClientShare.Models;
 using ServerClientShare.PeristenceMessages;
 using ServerClientShare.Services;
-using ServerGameCode.DTO;
 using ServerGameCode.ExtensionMethods;
 using ServerGameCode.Interfaces;
 
@@ -19,6 +19,7 @@ namespace ServerGameCode.Services
         private GameRoomService _gameRoomService;
         private HexMapService _hexMapService;
         private DeckService _deckService;
+        private PlayerService _playerService;
 
         public ServerCode Server { get; private set; }
 
@@ -54,16 +55,42 @@ namespace ServerGameCode.Services
             }
         }
 
-        public PersistenceService(ServerCode server, GameRoomService gameRoomService, HexMapService hexMapService, DeckService deckService)
+        public PersistenceService(ServerCode server, GameRoomService gameRoomService, HexMapService hexMapService, DeckService deckService, PlayerService playerService)
         {
             Server = server;
             _gameRoomService = gameRoomService;
             _hexMapService = hexMapService;
             _deckService = deckService;
+            _playerService = playerService;
+        }
+
+        public PersistenceService(DatabaseObject dbObject, ServerCode server, GameRoomService gameRoomService, HexMapService hexMapService, DeckService deckService, PlayerService playerService) : this(server, gameRoomService, hexMapService, deckService, playerService)
+        {
+            PersistenceData = GameSessionsPersistenceDataDTO.FromDBObject(dbObject, Server);
+            Console.WriteLine("Initialized Persitence Data From DTO:" +  PersistenceData.Turns.Count + " |Initial:" + PersistenceData.InitialTurns.Count);
+        }
+
+        public void Initialize(bool continuedGame = false)
+        {
+            if (PersistenceData != null) return;
 
             GameSessionsPersistenceDataDTO dataDto = new GameSessionsPersistenceDataDTO();
             dataDto.GameId = Server.RoomId;
+            dataDto.CreatedTimestamp = (Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds; //unix timestamp
             dataDto.ActionLog = _gameRoomService.PlayerActionLog;
+
+            var playerDtos = new List<PlayerDTO>();
+            int i = 0;
+            foreach (var player in _gameRoomService.MatchDTO.Players)
+            {
+                //TODO change from Server.Players to _gameRoomService.MatchDTO.Players => check if it is still working
+                dataDto.PlayerIds.Add(player.PlayerName);
+                var leaderType = player.Leader.Type;
+                playerDtos.Add(_playerService.GenerateInitialPlayer(player.PlayerName, i, leaderType));
+                i++;
+            }
+            if(continuedGame == false)
+                _hexMapService.GenerateNewHexMap(playerDtos);
             
             dataDto.InitialTurns.Add(new GameSessionTurnDataDTO()
             {
@@ -120,7 +147,7 @@ namespace ServerGameCode.Services
             this.DatabaseService().WriteInitialTurnDataToDb(turnNumber);
         }
 
-        public void AddTurnData(int turnNumber)
+        private void AddTurnData(int turnNumber)
         {
             var data = new GameSessionTurnDataDTO()
             {
@@ -130,41 +157,55 @@ namespace ServerGameCode.Services
                 Marketplace = this.DeckService().Marketplace
             };
 
-            Console.WriteLine("persitance turn count before:" + PersistenceData.Turns.Count);
+            Console.WriteLine("Add TURN DATA, Turns.Count:" + PersistenceData.Turns.Count + " turnNumber:" + turnNumber);
             if (PersistenceData.Turns.Count > turnNumber)
             {
-                Console.WriteLine("Number ONE");
                 PersistenceData.Turns[turnNumber] = data;
             }
             else if (PersistenceData.Turns.Count == turnNumber)
             {
-                Console.WriteLine("Number TWO");
                 PersistenceData.Turns.Add(data);
             }
-            Console.WriteLine("persitance turn count after:" + PersistenceData.Turns.Count);
+
+            this.DatabaseService().WriteGameSessionMetaDataToDb(MetaData, () => { }, () => { });
+            this.DatabaseService().WritePersistenceDataToDb(PersistenceData, () => { }, () => { });
         }
 
         public void UpdateTurnData(int turnNumber)
         {
-            Console.WriteLine("Update MEmory with turn number:" + turnNumber);
+            Console.WriteLine("Update Memory with turn number:" + turnNumber);
             AddTurnData(turnNumber);
         }
 
         public void UpdateTurnData()
         {
             int turnNumber = this.GameRoomService().MatchDTO.TurnNumber;
-            Console.WriteLine("Update MEmory with turn number:" + turnNumber);
+            Console.WriteLine("Update Memory with turn number:" + turnNumber);
             AddTurnData(turnNumber);
+        }
+
+        public void UpdateGameSessionBaseData()
+        {
+            PersistenceData.GameId = Server.RoomId;
+            PersistenceData.ActionLog = _gameRoomService.PlayerActionLog;
+
+            PersistenceData.PlayerIds.Clear();
+            foreach (var player in Server.Players)
+            {
+                PersistenceData.PlayerIds.Add(player.ConnectUserId);
+            }
         }
 
         public void AddActionToActionLog(Message actionMessage)
         {
             this.GameRoomService().PlayerActionLog.AddPlayerAction(actionMessage);
+            this.DatabaseService().WritePersistenceDataToDb(PersistenceData, () => { }, () => { });
         }
 
         public void AddActionToActionLog(PlayerAction action)
         {
             this.GameRoomService().PlayerActionLog.AddPlayerAction(action);
+            this.DatabaseService().WritePersistenceDataToDb(PersistenceData, () => { }, () => { });
         }
 
         public void GenerateInitialGameplayDataDTO(Player player, Action<InitialGameplayDataDTO> successCallback)
@@ -185,17 +226,6 @@ namespace ServerGameCode.Services
                     || ((_gameRoomService.MatchDTO.TurnNumber - playerDto.CurrentTurn) == 1 && _gameRoomService.MatchDTO.CurrentPlayerIndex != playerDto.PlayerIndex);
                 turnNumber = initialTurn ? playerDto.CurrentTurn + 1 : _gameRoomService.MatchDTO.TurnNumber;
             }
-
-            Console.WriteLine("Turn Difference:" + (_gameRoomService.MatchDTO.TurnNumber - playerDto.CurrentTurn));
-            Console.WriteLine("Is CurrentPlayer:" + (_gameRoomService.MatchDTO.CurrentPlayerIndex != playerDto.PlayerIndex));
-
-            Console.WriteLine("Turns Count:" + persistenceData.Turns.Count);
-            Console.WriteLine("Initial Turns Count:" + persistenceData.InitialTurns.Count);
-
-            Console.WriteLine("Initial :" + initialTurn);
-            Console.WriteLine("Player Turn Index:" + playerDto.CurrentTurn);
-            Console.WriteLine("Marketplace Turn Index:" + _gameRoomService.MatchDTO.TurnNumber);
-            Console.WriteLine("Turn Number:" +  turnNumber);
 
             var turns = initialTurn
                 ? persistenceData.InitialTurns

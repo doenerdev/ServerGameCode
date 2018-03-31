@@ -24,8 +24,6 @@ namespace ServerGameCode.NetworkMessageHandler
             serviceContainer.GameRoomService.UpdatePlayerTurnNumber(sender, messageDto.TurnNumber);
             serviceContainer.PersistenceService.AddInitialTurnData(messageDto.TurnNumber + 1, messageDto.NextPlayerIndex);
 
-
-
             Message answer = Message.Create(NetworkMessageType.ServerSentChangeTurn.ToString("G"));
 
             foreach (var player in serviceContainer.GameRoomService.Players)
